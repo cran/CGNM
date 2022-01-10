@@ -1,12 +1,12 @@
-df6d73b184f75aeb63371998586891dc *DESCRIPTION
+8577bf8f3a3797a8f29092927011db98 *DESCRIPTION
 fb71b44c7869c02d3bdda2bb7f3c747e *LICENSE
 81050ce719b74a781b6c614eed591ba4 *NAMESPACE
-08db86df021d4d4b283359e8e71574bc *R/Cluster_Gauss_Newton_method.R
-09499ece17da5ad075e6ec12bf38c069 *R/PostProcess.R
+9839d9a2a6a57bdb62e6523a861a5513 *R/Cluster_Gauss_Newton_method.R
+564c1214f20cd179d0396ec3446d3646 *R/PostProcess.R
 19ddfb4c0e9f10901eb9f0c0bec31846 *build/vignette.rds
 dd54af66de19e8b0c883397959ec233f *inst/doc/my-vignette.R
 2af362bd5f451136e12386fd8ed47d0e *inst/doc/my-vignette.Rmd
-989f4db46ca8f6d231fe4d9a9630b0cd *inst/doc/my-vignette.html
+c912a2944e7aba2df255feb3c6372f9d *inst/doc/my-vignette.html
 a3e3c0dd8a6a1ec90d3dae2cc7e4476e *man/Cluster_Gauss_Newton_method.Rd
 52cb8976b88e773bc282cb1c183a4bdb *man/acceptedApproximateMinimizers.Rd
 6342ba3df1d33f4ef6f168a5afa9ad65 *man/acceptedIndecies.Rd

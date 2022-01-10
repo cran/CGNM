@@ -327,7 +327,7 @@ plot_paraDistribution_byViolinPlots=function(CGNM_result, cutoff_pvalue=0.05, nu
 
   if("ggplot2" %in% tolower((.packages()))){
 
-    p<-ggplot(freeParaValues,aes(x=Kind_iter,y=X_value))+facet_wrap(Name~., scales = "free")+scale_y_continuous(trans = 'log10')
+    p<-ggplot(freeParaValues,aes(x=Kind_iter,y=X_value))+facet_wrap(Name~., scales = "free")
 
     p+geom_violin(trim=T,fill="#999999",linetype="blank",alpha=I(1/2))+
       stat_summary(geom="pointrange",fun = median, fun.min = function(x) quantile(x,probs=0.25), fun.max = function(x) quantile(x,probs=0.75), size=0.5,alpha=.5)+

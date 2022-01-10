@@ -176,6 +176,7 @@ tryCatch_nonlinearFunction=function(x,num_observations, nonlinearFunction){
 
 Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma_in=2){
 
+  textMemo=paste0("CGNM algorithm version 1.0\n\n",textMemo)
   runSetting=list(nonlinearFunction=nonlinearFunction, targetVector=targetVector, initial_lowerRange=initial_lowerRange, initial_upperRange=initial_upperRange ,algorithmParameter_initialLambda=algorithmParameter_initialLambda, algorithmParameter_gamma_in=algorithmParameter_gamma_in, num_minimizersToFind=num_minimizersToFind, num_iteration=num_iteration, saveLog=saveLog, runName=runName, textMemo=textMemo)
 
   showIntermetiateResults=FALSE
