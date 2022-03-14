@@ -15,7 +15,10 @@ Cluster_Gauss_Newton_method(
   runName = "",
   textMemo = "",
   algorithmParameter_initialLambda = 1,
-  algorithmParameter_gamma_in = 2
+  algorithmParameter_gamma = 2,
+  algorithmVersion = 3,
+  initialIterateMatrix = NA,
+  targetMatrix = NA
 )
 }
 \arguments{
@@ -39,7 +42,13 @@ Cluster_Gauss_Newton_method(
 
 \item{algorithmParameter_initialLambda}{(default: 1) \emph{A positive number} for initial value for the regularization coefficient lambda see Appendix B of of our paper for detail.}
 
-\item{algorithmParameter_gamma_in}{(default: 2) \emph{A positive number} a positive scalar value for adjusting the strength of the weighting for the linear approximation see Appendix A of our paper for detail.}
+\item{algorithmParameter_gamma}{(default: 2) \emph{A positive number} a positive scalar value for adjusting the strength of the weighting for the linear approximation see Appendix A of our paper for detail.}
+
+\item{algorithmVersion}{(default: 3.0) \emph{A positive number} user can choose different version of CGNM algorithm currently 1.0 and 3.0 are available.  If number chosen other than 1.0 or 3.0 it will choose 1.0.}
+
+\item{initialIterateMatrix}{(default: NA) \emph{A matrix} with dimension num_minimizersToFind x n.  User can provide initial iterate as a matrix  This input is used when the user wishes not to generate initial iterate randomly from the initial range.  The user is responsible for ensuring all function evaluation at each initial iterate does not produce NaN.}
+
+\item{targetMatrix}{(default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple target vectors in the matrix form.  This input is mainly used when running bootstrap method and not intended to be used for other purposes.}
 }
 \value{
 list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
@@ -47,7 +56,7 @@ list of a matrix X, Y,residual_history and initialX, as well as a list runSettin
 \item Y: \emph{a num_minimizersToFind by m matrix} which stores the nonlinearFunction evaluated at the corresponding approximate minimizers in matrix X above. In the context of model fitting each row corresponds to \strong{the model simulations}.
 \item residual_history: \emph{a num_iteration by num_minimizersToFind matrix} storing sum of squares residual for all iterations.
 \item initialX: \emph{a num_minimizersToFind by n matrix} which stores the set of initial iterates.
-\item runSetting: a list containing all the input variables to Cluster_Gauss_Newton_method (i.e., nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ,algorithmParameter_initialLambda, algorithmParameter_gamma_in, num_minimizersToFind, num_iteration, saveLog, runName, textMemo).}
+\item runSetting: a list containing all the input variables to Cluster_Gauss_Newton_method (i.e., nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ,algorithmParameter_initialLambda, algorithmParameter_gamma, num_minimizersToFind, num_iteration, saveLog, runName, textMemo).}
 }
 \description{
 Find multiple minimisers of the nonlinear least squares problem.
@@ -63,7 +72,6 @@ Full detail of the algorithm and comparison with conventional method is availabl
 }
 \examples{
 ##lip-flop kinetics (an example known to have two distinct solutions)
-library(parallel) #if parallel library is loaded CGNM paralleizes the algorithm automatically
 
 model_analytic_function=function(x){
 
@@ -92,7 +100,6 @@ acceptedApproximateMinimizers(CGNM_result)
 
 \dontrun{
 library(RxODE)
-library(parallel) #if parallel library is loaded CGNM paralleizes the algorithm automatically
 
 model_text="
 d/dt(X_1)=-ka*X_1

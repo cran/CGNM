@@ -1,3 +1,7 @@
+## TODO implement check function (check if the nonlinear function is evaluable at the middle of the cluster and then same length as the observation)
+## TODO remove parallel statements from the documentation
+## TODO remove NA in the observation
+
 repmat=function(subM,numrows,numcol){
 
   matrix_out=subM
@@ -18,6 +22,84 @@ repmat=function(subM,numrows,numcol){
 
 
   return(matrix_out)
+}
+
+col_normalize=function(data_in){
+  out=data_in;
+  for(i in seq(1,dim(data_in)[2])){
+    out[,i]=(data_in[,i]-mean(data_in[,i]))/sd(data_in[,i])
+  }
+  return(out)
+}
+
+
+col_sd=function(data_in){
+  out=c()
+  for(i in seq(1,dim(data_in)[2])){
+    out=c(out,sd(data_in[,i]))
+  }
+  return(out)
+}
+
+col_max=function(data_in){
+  out=c()
+  for(i in seq(1,dim(data_in)[2])){
+    out=c(out,max(data_in[,i]))
+  }
+  return(out)
+}
+
+col_min=function(data_in){
+  out=c()
+  for(i in seq(1,dim(data_in)[2])){
+    out=c(out,min(data_in[,i]))
+  }
+  return(out)
+}
+
+col_mean=function(data_in){
+  out=c()
+  for(i in seq(1,dim(data_in)[2])){
+    out=c(out,mean(data_in[,i]))
+  }
+  return(out)
+}
+
+elbow_index=function(vec_in){
+
+  trapizoido_area=c()
+  for(i in seq(1,length(vec_in)-1))
+    trapizoido_area=c(trapizoido_area, (vec_in[1]+vec_in[i])*i+(vec_in[i+1]+vec_in[length(vec_in)])*(length(vec_in)-i))
+
+  return(which(trapizoido_area==min(trapizoido_area)))
+}
+
+optimal_kmeans=function(data_in){
+  #Assume data is stored in rows
+
+  normalized_data=col_normalize(data_in)
+
+  residual=c()
+
+  numMaxCluster=min(round(dim(data_in)[1]/dim(data_in)[2]/2),10)
+
+  if(numMaxCluster>1){
+
+    for(i in seq(2,numMaxCluster)){
+      kmeans_res=kmeans(normalized_data,i)
+      residual=c(residual,kmeans_res$tot.withinss)
+    }
+    elbow_ind=(elbow_index(residual))
+
+    if(length(elbow_ind)>0){
+      kmeans(normalized_data,(elbow_ind+1))
+    }else{
+      kmeans(normalized_data,1)
+    }
+  }else{
+    kmeans(normalized_data,1)
+  }
+
 }
 
 matlabSum <-function(matrix,direction){
@@ -55,7 +137,7 @@ matlabRand<-function(numRow,numCol){
   return(outMat)
 }
 
-tryCatch_nonlinearFunction=function(x,num_observations, nonlinearFunction){
+tryCatch_nonlinearFunction=function(x,num_observations, nonlinearFunction, validTarget){
   out <- tryCatch(
     {
       nonlinearFunction(x)
@@ -72,6 +154,8 @@ tryCatch_nonlinearFunction=function(x,num_observations, nonlinearFunction){
     }
   )
 
+  out[!validTarget]=0
+
   if(length(out)!=num_observations){
     out=rep(NaN,num_observations)
   }else if(is.na(sum(out))){
@@ -80,8 +164,51 @@ tryCatch_nonlinearFunction=function(x,num_observations, nonlinearFunction){
     out=rep(NaN,num_observations)
   }
 
+
   return(out)
 }
+
+
+CGNM_input_test <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ){
+
+    if(length(initial_lowerRange)!=length(initial_upperRange)){
+      stop("initial_lowerRange and initial_upperRange need to have the same length")
+
+    }
+
+    if(sum(is.na(as.numeric(initial_lowerRange)))+sum(is.na(as.numeric(initial_upperRange)))>0){
+      stop("initial_lowerRange and initial_upperRange can only be the vector of non-numericl values")
+
+    }
+
+    print("checking if the nonlinearFunction can be evaluated at the initial_lowerRange")
+    testEval=nonlinearFunction(initial_lowerRange)
+    if(!is.na(sum(testEval))&&length(testEval)==length(targetVector)){
+      print("Evaluation Successful")
+    }else{
+      print("WARNING: nonlinearFunction evaluation at initial_lowerRange NOT Successful.")
+    }
+
+    print("checking if the nonlinearFunction can be evaluated at the initial_upperRange")
+    testEval=nonlinearFunction(initial_upperRange)
+    if(!is.na(sum(testEval))&&length(testEval)==length(targetVector)){
+      print("Evaluation Successful")
+    }else{
+      print("WARNING: nonlinearFunction evaluation at initial_upperRange NOT Successful.")
+    }
+
+    print("checking if the nonlinearFunction can be evaluated at the (initial_upperRange+initial_lowerRange)/2")
+    testEval=nonlinearFunction((initial_upperRange+initial_lowerRange)/2)
+    if(!is.na(sum(testEval))&&length(testEval)==length(targetVector)){
+      print("Evaluation Successful")
+    }else{
+      print("WARNING: nonlinearFunction evaluation at (initial_upperRange+initial_lowerRange)/2 NOT Successful.")
+    }
+
+    if(length(testEval)!=length(targetVector)){
+      stop("Length of output of the nonlinearFunction and targetVector are not the same. Double check the nonlinear function definition and targetVector input.")
+      }
+  }
 
 #' @title Cluster_Gauss_Newton_method
 #' @description Find multiple minimisers of the nonlinear least squares problem.
@@ -104,16 +231,18 @@ tryCatch_nonlinearFunction=function(x,num_observations, nonlinearFunction){
 #' @param runName (default: "") \emph{string} that user can ue to identify the CGNM runs. The run history will be saved in the folder name CGNM_log_<runName>.  If this is set to "TIME" then runName is automatically set by the run start time.
 #' @param textMemo (default: "") \emph{string} that user can write an arbitrary text (without influencing computation). This text is stored with the computation result so that can be used for example to describe model so that the user can recognize the computation result.
 #' @param algorithmParameter_initialLambda (default: 1) \emph{A positive number} for initial value for the regularization coefficient lambda see Appendix B of of our paper for detail.
-#' @param algorithmParameter_gamma_in (default: 2) \emph{A positive number} a positive scalar value for adjusting the strength of the weighting for the linear approximation see Appendix A of our paper for detail.
+#' @param algorithmParameter_gamma (default: 2) \emph{A positive number} a positive scalar value for adjusting the strength of the weighting for the linear approximation see Appendix A of our paper for detail.
+#' @param algorithmVersion (default: 3.0) \emph{A positive number} user can choose different version of CGNM algorithm currently 1.0 and 3.0 are available.  If number chosen other than 1.0 or 3.0 it will choose 1.0.
+#' @param initialIterateMatrix (default: NA) \emph{A matrix} with dimension num_minimizersToFind x n.  User can provide initial iterate as a matrix  This input is used when the user wishes not to generate initial iterate randomly from the initial range.  The user is responsible for ensuring all function evaluation at each initial iterate does not produce NaN.
+#' @param targetMatrix (default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple target vectors in the matrix form.  This input is mainly used when running bootstrap method and not intended to be used for other purposes.
 #' @return list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
 #' \enumerate{\item X: \emph{a num_minimizersToFind by n matrix} which stores the approximate minimizers of the nonlinear least squares in each row. In the context of model fitting they are \strong{the estimated parameter sets}.
 #' \item Y: \emph{a num_minimizersToFind by m matrix} which stores the nonlinearFunction evaluated at the corresponding approximate minimizers in matrix X above. In the context of model fitting each row corresponds to \strong{the model simulations}.
 #' \item residual_history: \emph{a num_iteration by num_minimizersToFind matrix} storing sum of squares residual for all iterations.
 #' \item initialX: \emph{a num_minimizersToFind by n matrix} which stores the set of initial iterates.
-#' \item runSetting: a list containing all the input variables to Cluster_Gauss_Newton_method (i.e., nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ,algorithmParameter_initialLambda, algorithmParameter_gamma_in, num_minimizersToFind, num_iteration, saveLog, runName, textMemo).}
+#' \item runSetting: a list containing all the input variables to Cluster_Gauss_Newton_method (i.e., nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ,algorithmParameter_initialLambda, algorithmParameter_gamma, num_minimizersToFind, num_iteration, saveLog, runName, textMemo).}
 #' @examples
 #' ##lip-flop kinetics (an example known to have two distinct solutions)
-#' library(parallel) #if parallel library is loaded CGNM paralleizes the algorithm automatically
 #'
 #'model_analytic_function=function(x){
 #'
@@ -143,7 +272,6 @@ tryCatch_nonlinearFunction=function(x,num_observations, nonlinearFunction){
 #  ## flip-flop kinetics using RxODE (an example known to have two distinct solutions)
 #' \dontrun{
 #' library(RxODE)
-#' library(parallel) #if parallel library is loaded CGNM paralleizes the algorithm automatically
 #'
 #' model_text="
 #' d/dt(X_1)=-ka*X_1
@@ -171,15 +299,59 @@ tryCatch_nonlinearFunction=function(x,num_observations, nonlinearFunction){
 #' initial_lowerRange = c(0.1,0.1,0.1),initial_upperRange =  c(10,10,10))}
 #'
 #' @export
-#' @import stats parallel
+#' @import stats MASS
 
 
-Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma_in=2){
+Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA){
 
-  textMemo=paste0("CGNM algorithm version 1.0\n\n",textMemo)
-  runSetting=list(nonlinearFunction=nonlinearFunction, targetVector=targetVector, initial_lowerRange=initial_lowerRange, initial_upperRange=initial_upperRange ,algorithmParameter_initialLambda=algorithmParameter_initialLambda, algorithmParameter_gamma_in=algorithmParameter_gamma_in, num_minimizersToFind=num_minimizersToFind, num_iteration=num_iteration, saveLog=saveLog, runName=runName, textMemo=textMemo)
+  targetMatrix_in=targetMatrix
+
+
+  dimTargetMatrix=c(0,0)
+  dimInitialIterateMatrix=c(0,0)
+
+  if(is.matrix(initialIterateMatrix)){
+    dimInitialIterateMatrix=dim(initialIterateMatrix)
+  }
+
+  if(is.matrix(targetMatrix_in)){
+    dimTargetMatrix=dim(targetMatrix_in)
+  }
+
+  if(dimInitialIterateMatrix[1]>0&dimTargetMatrix[1]>0){
+    num_minimizersToFind=min(dimInitialIterateMatrix[1], dimTargetMatrix[1])
+    initialIterateMatrix=initialIterateMatrix[1:num_minimizersToFind,]
+    targetMatrix_in=targetMatrix_in[1:num_minimizersToFind,]
+  }else if(dimTargetMatrix[1]>0){
+    num_minimizersToFind=dimTargetMatrix[1]
+  }else if(dimInitialIterateMatrix[1]>0){
+    num_minimizersToFind=dimInitialIterateMatrix[1]
+  }
+
+  textMemo=paste0("CGNM algorithm version ",algorithmVersion,"\n\n",textMemo)
+  runSetting=list(nonlinearFunction=nonlinearFunction, targetVector=targetVector, initial_lowerRange=initial_lowerRange, initial_upperRange=initial_upperRange ,algorithmParameter_initialLambda=algorithmParameter_initialLambda, algorithmParameter_gamma=algorithmParameter_gamma, num_minimizersToFind=num_minimizersToFind, num_iteration=num_iteration, saveLog=saveLog, runName=runName, textMemo=textMemo, algorithmVersion=algorithmVersion, initialIterateMatrix=initialIterateMatrix, targetMatrix=targetMatrix)
+
+  testCGNMinput=TRUE
+
+  if(testCGNMinput){
+    CGNM_input_test(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange )
+
+  }
 
   showIntermetiateResults=FALSE
+
+  targetVector=as.numeric(targetVector)
+  validTarget_vec=!is.na(targetVector)
+
+  targetVector[!validTarget_vec]=0
+
+  if(dimTargetMatrix[1]==0){
+    targetMatrix=repmat(matrix(targetVector,nrow=1), num_minimizersToFind,1)
+  }else{
+    targetMatrix=targetMatrix_in
+    targetMatrix[,!validTarget_vec]=0
+  }
+
 
   X_ul_in=t(matrix(c(initial_lowerRange,initial_upperRange), nrow=length(initial_upperRange)))
 
@@ -197,7 +369,7 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
   X_history=c()
   Y_history=c()
 
-    algorithmParameter_gamma=algorithmParameter_gamma_in
+    algorithmParameter_gamma=algorithmParameter_gamma
 
     method <- 'CGNM'# set algorithm name for the log files)
     descriptionText <- paste0(toString(num_minimizersToFind),'samples_initLambda',toString(algorithmParameter_initialLambda),'_distanceOrder',toString(algorithmParameter_gamma))
@@ -227,13 +399,25 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
     is_alive <- matrix(0,1,num_minimizersToFind)# initialise the vector to keep track of if the nonlinear function was able to be evaluated at the randomly generated x.
 
 
+    userDefInitialIterateAvailable=(dimInitialIterateMatrix[1]>0)
+
     # repeat the randomsampling of x until num_minimizersToFind of 'valid' x are sampled. Where we consider x to be valid if f(x) can be evaluated.
     while(sum(is_alive)<num_minimizersToFind){
 
-      print("Generating initial cluster.")
-
         # random sampling of X
+      if(userDefInitialIterateAvailable){
+        X_temp=initialIterateMatrix
+        userDefInitialIterateAvailable=FALSE
+      }else{
         X_temp <- matlabRand(num_minimizersToFind,length(X_ul_in[1,]))*(repmat(X_ul_in[2,],num_minimizersToFind,1)-repmat(X_ul_in[1,],num_minimizersToFind,1))+repmat(X_ul_in[1,],num_minimizersToFind,1)
+      }
+
+        # if(algorithmVersion==4){
+        #   minX=initial_lowerRange
+        #   maxX=initial_upperRange
+        #
+        #   X_temp=round((X_temp)%*%diag(1/(maxX-minX))*numDiscretization)%*%diag((maxX-minX))/numDiscretization
+        # }
 
         # replace the rows of X matrix with randomly sampled x if x was
         # determined to be not valid
@@ -244,14 +428,14 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
         #   Y_list=mclapply(split(X, rep(seq(1:nrow(X)),ncol(X))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, mc.cores = 4)
         #
         # }else{
-        Y_list=lapply(split(X, rep(seq(1:nrow(X)),ncol(X))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction)
+        Y_list=lapply(split(X, rep(seq(1:nrow(X)),ncol(X))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
         #}
 
         Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
 
 
         # compute SSR
-        residual <- matlabSum((Y-repmat(t(as.matrix(targetVector)),num_minimizersToFind,1))^2,2)
+        residual <- matlabSum((Y-targetMatrix)^2,2)
 
         if(showIntermetiateResults){
           print(residual)
@@ -261,6 +445,11 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
         # we consider x to be valid)
         is_alive=is.nan(residual)==0
 
+        print(paste("Generating initial cluster.",sum(is_alive),"out of",num_minimizersToFind,"done"))
+
+        if(sum(is_alive)==0){
+          print("It is most likely that either nonlinearfunction definition, intial range selection, or targetVector definition is incorrect. Stop the CGNM run and fix the issue.")
+        }
     }
 
     # store the residual vector for the initial cluster into the
@@ -277,7 +466,55 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
 
     for (k in seq(1,num_iteration)){
 
-        out_temp <- main_iteration(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetVector, algorithmParameter_gamma)
+      if(algorithmParameter_gamma=="AUTO"){
+        if(k<50){
+          gamma_toUse=2^round(k/15)
+        }else{
+          gamma_toUse=2^round(50/15)
+        }
+      }else{
+        gamma_toUse=algorithmParameter_gamma
+      }
+
+      if(algorithmVersion==3){
+
+        out_temp <- main_iteration_version3_fast(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse)
+
+      # }else if(algorithmVersion==3.1){
+      #
+      #   switchIndex=10
+      #
+      #   if(k==switchIndex){
+      #     lambda_vec <- matrix(1,1,num_minimizersToFind)*algorithmParameter_initialLambda# initialise regularisation parameter lambda
+      #   }
+      #
+      #   if(k>=switchIndex){
+      #     best_index=which(residual==min(residual))
+      #     bestFit=Y[best_index,]
+      #     targetMatrix=repmat(bestFit,dim(X)[1],1)
+      #
+      #     targetMatrix[best_index,]=targetVector
+      #   }
+      #
+      #   out_temp <- main_iteration_version3_fast(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse)
+      #
+      # }else if(algorithmVersion==4){
+      #
+      #   if(k==10){
+      #     lambda_vec <- matrix(1,1,num_minimizersToFind)*algorithmParameter_initialLambda# initialise regularisation parameter lambda
+      #   }
+      #
+      #   if(k<10){
+      #     out_temp <- main_iteration_version4(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse, numDiscretization=numDiscretization)
+      #   }else{
+      #
+      #     out_temp <- main_iteration_version3(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse)
+      #   }
+      #
+
+      }else{
+        out_temp <- main_iteration_version1(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse)
+      }
 
         X_new=X+out_temp
 
@@ -285,7 +522,7 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
         #   Y_list=mclapply(split(X_new, rep(seq(1:nrow(X_new)),ncol(X_new))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, mc.cores = 4)
         #
         #   }else{
-        Y_list=lapply(split(X_new, rep(seq(1:nrow(X_new)),ncol(X_new))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction)
+        Y_list=lapply(split(X_new, rep(seq(1:nrow(X_new)),ncol(X_new))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
         #}
         Y_new=t(matrix(unlist(Y_list),ncol=length(Y_list)))
 
@@ -293,12 +530,12 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
           print(Y_new)
         }
 
-        residual_new <- t(matlabSum((Y_new-repmat(t(targetVector),num_minimizersToFind,1))^2,2))
+        residual_new <- t(matlabSum((Y_new-targetMatrix)^2,2))
 
 
         residual <- prev_residual
         for (i in seq(1,num_minimizersToFind)){
-            if (!is.nan(residual_new[i])&&(prev_residual[i]>residual_new[i])){
+            if (!is.nan(residual_new[i])&&!is.nan(prev_residual[i])&&(prev_residual[i]>residual_new[i])){
                 X[i,] <- X[i,]+out_temp[i,]
                 residual[i] <- residual_new[i]
                 Y[i,] <- Y_new[i,]
@@ -323,15 +560,8 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
 
         if(saveLog){
 
-          result_list=list(X=X,Y=Y,residual_history=residual_history, initialX=X_history[[1]], runSetting=runSetting )
-          save(file=paste0(saveFolderName,'/iteration_',toString(k),'.RDATA'), result_list)
-
-          # write.csv(file=paste0('CGNM_log/',method,'_',descriptionText,'_xHistory_',toString(k),'.csv'),X_history[[k]])
-          # write.csv(file=paste0('CGNM_log/',method,'_',descriptionText,'_yHistory_',toString(k),'.csv'),Y_history[[k]])
-          #
-          # write.csv(file=paste0('CGNM_log/',method,'_',descriptionText,'_residualHistory.csv'),t(residual_history))
-          # write.csv(file=paste0('CGNM_log/',method,'_',descriptionText,'_compTime.csv'),timeOneParaTook)
-          # write.csv(file=paste0('CGNM_log/',method,'_',descriptionText,'_lambdaHistory.csv'),t(lambda_history))
+          CGNM_result=list(X=X,Y=Y,residual_history=residual_history, initialX=X_history[[1]],lambda_history=lambda_history, runSetting=runSetting )
+          save(file=paste0(saveFolderName,'/iteration_',toString(k),'.RDATA'), CGNM_result)
         }
 
 
@@ -341,26 +571,143 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
           break
         }
     }
-
-    # write.csv(file=paste0(saveFolderName,'/',method,'_',descriptionText,'_xHistory_',toString(k),'.csv'),X_history[[k]])
-    # write.csv(file=paste0(saveFolderName,'/',method,'_',descriptionText,'_yHistory_',toString(k),'.csv'),Y_history[[k]])
-    #
-    # write.csv(file=paste0(saveFolderName,'/',method,'_',descriptionText,'_residualHistory.csv'),t(residual_history))
-    # write.csv(file=paste0(saveFolderName,'/',method,'_',descriptionText,'_compTime.csv'),timeOneParaTook)
-    # write.csv(file=paste0(saveFolderName,'/',method,'_',descriptionText,'_lambdaHistory.csv'),t(lambda_history))
-
-    result_list=list(X=X,Y=Y,residual_history=residual_history, runSetting=runSetting, initialX=X_history[[1]] )
+    CGNM_result=list(X=X,Y=Y,residual_history=residual_history, lambda_history=lambda_history, runSetting=runSetting, initialX=X_history[[1]] )
 
     if(saveLog){
-      save(file=paste0(saveFolderName,'/iteration_final.RDATA'), result_list)
+      save(file=paste0(saveFolderName,'/iteration_final.RDATA'), CGNM_result)
     }
 
-  return(result_list)
+  return(CGNM_result)
 
 }
 
 
-main_iteration <-  function(X_in, Y_in, lambdaV, minX, maxX, targetVector, algorithmParameter_gamma){
+
+
+main_iteration_version4 <-  function(X_in, Y_in, lambdaV, minX, maxX, targetMatrix, algorithmParameter_gamma, numDiscretization=100){
+
+  #// aliveIndex: index of the parameter set in the cluster whose SSR have decreased in the previous iteration.
+  #// X_in: all set of parameters in the cluster from the previous itaration  X_in[i][j]: jth parameter value in the ith parameter set in the cluster
+  #// Y_in: all set of the function value (solution of the forward problem, f(parameter)) from the previous iteration
+  # global algorithmParameter_gamma
+
+  ##//STEP 1: Linear Approximation
+
+  YisNotNaN <- matrix(1,dim(X_in)[1],1)
+
+  for (k in 1:dim(Y_in)[1]){
+    for (i in 1:dim(Y_in)[2]){
+      if (is.nan(Y_in[k,i])|is.infinite(Y_in[k,i])){
+        YisNotNaN[k] <- 0
+      }
+    }
+  }
+
+  #// Linear approximation will be A x + y_o \approx f(x) = y for all y in Y matrix (stored in each row of Y matrix)
+  #// This can be written as A_with_y0 X_append_one_column^T \approx Y^T
+
+
+  kmean_result=optimal_kmeans(X_in)
+
+  notAcceptableClusters=as.numeric(which(table(kmean_result$cluster)==1,arr.ind = TRUE))
+
+  relative_distance <- matrix(0,dim(X_in)[1],dim(X_in)[1])
+  rec_relative_distance <- matrix(0,dim(X_in)[1],dim(X_in)[1])
+
+  for (i in seq(1,dim(X_in)[1])){
+    relative_distance[i,i] <- 0
+    rec_relative_distance[i,i] <- 0
+
+    if(i>1){
+      for (j in seq(1,(i-1))){
+        relative_distance[i,j] <- 0
+        relative_distance[j,i] <- 0
+
+        if(kmean_result$cluster[i]==kmean_result$cluster[j]){
+
+          for (k in seq(1,dim(X_in)[2])){
+            relative_distance[i,j] <- relative_distance[i,j]+((X_in[i,k]-X_in[j,k])/(sd(X_in[kmean_result$cluster==kmean_result$cluster[j],k])))^2
+          }
+        }else{
+          relative_distance[i,j] =0
+        }
+
+        if (YisNotNaN[i]==1&YisNotNaN[j]==1&relative_distance[i,j]!=0){
+
+          relative_distance[j,i] <- relative_distance[i,j]
+          rec_relative_distance[i,j] <- 1/relative_distance[i,j]
+          rec_relative_distance[j,i] <- rec_relative_distance[i,j]
+        } else {
+          relative_distance[i,j] <- 0
+          rec_relative_distance[i,j] <- 0
+          rec_relative_distance[j,i] <- 0
+        }
+
+      }
+
+    }
+
+  }
+
+
+
+
+  # Linear approximation will be A_with_y0  X_append_one_column^T \approx Y^T now solve it for A_with_y0
+  # We solve for \min || X_append_one_column  A_with_y0^T - Y ||_F
+  # use CGNR and solve each row of A_with_y0 (i.e., each column of A_with_y0^T)
+  A <- matrix(0, dim(Y_in)[2],dim(X_in)[2])
+  deltaX <- matrix(0, dim(X_in)[1],dim(X_in)[2])
+  delta_X <- matrix(0, dim(X_in)[1],dim(X_in)[2])
+  tempOnes <- matrix(1, dim(Y_in)[1],1)
+
+  for (k in seq(1,dim(Y_in)[1])){
+    if(lambdaV[k]<10^10&(!(kmean_result$cluster[k] %in% notAcceptableClusters))){
+      ## 2-1): Construct weighted linear approximation of the nonlinear function
+      for (i in seq(1,dim(X_in)[1])){
+        deltaX[i,] <- X_in[i,]-X_in[k,]
+      }
+
+      # use the following code if one wishes to use MASS's matrix
+      # inverse function (ginv) instead of CGNR
+
+      rec_relative_distance_tempvec=(rec_relative_distance[ ,k])^algorithmParameter_gamma
+      rec_relative_distance_tempvec[is.infinite(rec_relative_distance_tempvec)]=max(rec_relative_distance_tempvec[!is.infinite(rec_relative_distance_tempvec)])
+
+      AT=t(diag(rec_relative_distance_tempvec)%*%deltaX)
+
+      ATAinv=MASS::ginv(AT%*%t(AT))
+
+
+      delta_Y=Y_in
+
+      for(i in seq(1, dim(Y_in)[2])){
+        delta_Y[,i]=Y_in[,i]-Y_in[k,i]
+      }
+
+      A=t(ATAinv%*%(AT%*%diag((rec_relative_distance[ ,k])^algorithmParameter_gamma)%*%(delta_Y)))
+
+
+      #  for (i in seq(1,dim(Y_in)[2])){
+      #    A[i,] <- CGNR_ATAx_ATb_with_weight(deltaX,Y_in[ ,i]-Y_in[k,i]*tempOnes,rec_relative_distance[ ,k]^algorithmParameter_gamma)
+      #  }
+
+
+      ## 2-2): Solve for x that minimizes the resodual using the weighted linear approximation
+      delta_X[k,] <- CGNR_ATAx_ATb_with_reg(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k])
+    }
+
+  }
+
+
+  delta_X=round((delta_X)%*%diag(1/(maxX-minX))*numDiscretization)%*%diag((maxX-minX))/numDiscretization
+
+  return(delta_X)
+}
+
+
+
+
+main_iteration_version3 <-  function(X_in, Y_in, lambdaV, minX, maxX, targetMatrix, algorithmParameter_gamma){
 
     #// aliveIndex: index of the parameter set in the cluster whose SSR have decreased in the previous iteration.
     #// X_in: all set of parameters in the cluster from the previous itaration  X_in[i][j]: jth parameter value in the ith parameter set in the cluster
@@ -384,7 +731,13 @@ main_iteration <-  function(X_in, Y_in, lambdaV, minX, maxX, targetVector, algor
     #// This can be written as A_with_y0 X_append_one_column^T \approx Y^T
 
 
-    x_width <- maxX-minX
+    kmean_result=optimal_kmeans(X_in)
+
+    while(min(table(kmean_result$cluster))<dim(X_in)[2]){
+      kmean_result=kmeans(col_normalize(X_in),centers = length(unique(kmean_result$cluster))-1)
+    }
+
+    notAcceptableClusters=as.numeric(which(table(kmean_result$cluster)==1,arr.ind = TRUE))
 
     relative_distance <- matrix(0,dim(X_in)[1],dim(X_in)[1])
     rec_relative_distance <- matrix(0,dim(X_in)[1],dim(X_in)[1])
@@ -398,13 +751,16 @@ main_iteration <-  function(X_in, Y_in, lambdaV, minX, maxX, targetVector, algor
             relative_distance[i,j] <- 0
             relative_distance[j,i] <- 0
 
-            for (k in seq(1,dim(X_in)[2])){
-              relative_distance[i,j] <- relative_distance[i,j]+((X_in[i,k]-X_in[j,k])/x_width[k])^2
+            if(kmean_result$cluster[i]==kmean_result$cluster[j]){
+
+              for (k in seq(1,dim(X_in)[2])){
+                relative_distance[i,j] <- relative_distance[i,j]+((X_in[i,k]-X_in[j,k])/(sd(X_in[kmean_result$cluster==kmean_result$cluster[j],k])))^2
+              }
+            }else{
+              relative_distance[i,j] =0
             }
 
-            if (YisNotNaN[i]==1&YisNotNaN[j]==1){
-
-              relative_distance[i,j] <- (relative_distance[i,j])
+            if (YisNotNaN[i]==1&YisNotNaN[j]==1&relative_distance[i,j]!=0){
 
               relative_distance[j,i] <- relative_distance[i,j]
               rec_relative_distance[i,j] <- 1/relative_distance[i,j]
@@ -433,30 +789,291 @@ main_iteration <-  function(X_in, Y_in, lambdaV, minX, maxX, targetVector, algor
     tempOnes <- matrix(1, dim(Y_in)[1],1)
 
     for (k in seq(1,dim(Y_in)[1])){
-
-      if(lambdaV[k]<10^10){
+      if(lambdaV[k]<10^10&(!(kmean_result$cluster[k] %in% notAcceptableClusters))){
         ## 2-1): Construct weighted linear approximation of the nonlinear function
         for (i in seq(1,dim(X_in)[1])){
           deltaX[i,] <- X_in[i,]-X_in[k,]
         }
 
-        # use the following code if one wishes to use matlab's matrix
-        # inverse function instead of CGNR
-        #        AT=(diag((rec_relative_distance[ ,k]).^algorithmParameter_gamma)*deltaX)';
-        #        ATAinv=inv(AT*AT');
-        #        A=(ATAinv*(AT*diag((rec_relative_distance[ ,k]).^algorithmParameter_gamma)*(Y_in-repmat(Y_in[k,],dim(Y_in)[1],1))))';
+        # use the following code if one wishes to use MASS's matrix
+        # inverse function (ginv) instead of CGNR
 
-        for (i in seq(1,dim(Y_in)[2])){
-          A[i,] <- CGNR_ATAx_ATb_with_weight(deltaX,Y_in[ ,i]-Y_in[k,i]*tempOnes,rec_relative_distance[ ,k]^algorithmParameter_gamma)
-        }
+
+
+        rec_relative_distance_tempvec=(rec_relative_distance[ ,k])^algorithmParameter_gamma
+        rec_relative_distance_tempvec[is.infinite(rec_relative_distance_tempvec)]=max(rec_relative_distance_tempvec[!is.infinite(rec_relative_distance_tempvec)])
+
+        AT=t(diag(rec_relative_distance_tempvec)%*%deltaX)
+
+          ATAinv=MASS::ginv(AT%*%t(AT))
+
+          delta_Y=Y_in
+
+          for(i in seq(1, dim(Y_in)[2])){
+            delta_Y[,i]=Y_in[,i]-Y_in[k,i]
+          }
+
+          A=t(ATAinv%*%(AT%*%diag((rec_relative_distance[ ,k])^algorithmParameter_gamma)%*%(delta_Y)))
+
+        #  for (i in seq(1,dim(Y_in)[2])){
+        #    A[i,] <- CGNR_ATAx_ATb_with_weight(deltaX,Y_in[ ,i]-Y_in[k,i]*tempOnes,rec_relative_distance[ ,k]^algorithmParameter_gamma)
+        #  }
+
 
         ## 2-2): Solve for x that minimizes the resodual using the weighted linear approximation
-        delta_X[k,] <- CGNR_ATAx_ATb_with_reg(A, t(targetVector-Y_in[k,]),lambdaV[k])
+        delta_X[k,] <- CGNR_ATAx_ATb_with_reg(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k])
       }
 
     }
 
     return(delta_X)
+}
+
+
+main_iteration_version1 <-  function(X_in, Y_in, lambdaV, minX, maxX, targetMatrix, algorithmParameter_gamma){
+
+  #// aliveIndex: index of the parameter set in the cluster whose SSR have decreased in the previous iteration.
+  #// X_in: all set of parameters in the cluster from the previous itaration  X_in[i][j]: jth parameter value in the ith parameter set in the cluster
+  #// Y_in: all set of the function value (solution of the forward problem, f(parameter)) from the previous iteration
+  # global algorithmParameter_gamma
+
+
+  ##//STEP 1: Linear Approximation
+
+  YisNotNaN <- matrix(1,dim(X_in)[1],1)
+
+  for (k in 1:dim(Y_in)[1]){
+    for (i in 1:dim(Y_in)[2]){
+      if (is.nan(Y_in[k,i])|is.infinite(Y_in[k,i])){
+        YisNotNaN[k] <- 0
+      }
+    }
+  }
+
+  #// Linear approximation will be A x + y_o \approx f(x) = y for all y in Y matrix (stored in each row of Y matrix)
+  #// This can be written as A_with_y0 X_append_one_column^T \approx Y^T
+
+
+  x_width <- maxX-minX
+
+  relative_distance <- matrix(0,dim(X_in)[1],dim(X_in)[1])
+  rec_relative_distance <- matrix(0,dim(X_in)[1],dim(X_in)[1])
+
+  for (i in seq(1,dim(X_in)[1])){
+    relative_distance[i,i] <- 0
+    rec_relative_distance[i,i] <- 0
+
+    if(i>1){
+      for (j in seq(1,(i-1))){
+        relative_distance[i,j] <- 0
+        relative_distance[j,i] <- 0
+
+        for (k in seq(1,dim(X_in)[2])){
+          relative_distance[i,j] <- relative_distance[i,j]+((X_in[i,k]-X_in[j,k])/x_width[k])^2
+        }
+
+        if (YisNotNaN[i]==1&YisNotNaN[j]==1){
+
+          relative_distance[i,j] <- (relative_distance[i,j])
+
+          relative_distance[j,i] <- relative_distance[i,j]
+          rec_relative_distance[i,j] <- 1/relative_distance[i,j]
+          rec_relative_distance[j,i] <- rec_relative_distance[i,j]
+        } else {
+          relative_distance[i,j] <- 0
+          rec_relative_distance[i,j] <- 0
+          rec_relative_distance[j,i] <- 0
+        }
+
+      }
+
+    }
+
+  }
+
+
+
+
+  # Linear approximation will be A_with_y0  X_append_one_column^T \approx Y^T now solve it for A_with_y0
+  # We solve for \min || X_append_one_column  A_with_y0^T - Y ||_F
+  # use CGNR and solve each row of A_with_y0 (i.e., each column of A_with_y0^T)
+  A <- matrix(0, dim(Y_in)[2],dim(X_in)[2])
+  deltaX <- matrix(0, dim(X_in)[1],dim(X_in)[2])
+  delta_X <- matrix(0, dim(X_in)[1],dim(X_in)[2])
+  tempOnes <- matrix(1, dim(Y_in)[1],1)
+
+  for (k in seq(1,dim(Y_in)[1])){
+
+    if(lambdaV[k]<10^10){
+      ## 2-1): Construct weighted linear approximation of the nonlinear function
+      for (i in seq(1,dim(X_in)[1])){
+        deltaX[i,] <- X_in[i,]-X_in[k,]
+      }
+
+      # use the following code if one wishes to use matlab's matrix
+      # inverse function instead of CGNR
+      #        AT=(diag((rec_relative_distance[ ,k]).^algorithmParameter_gamma)*deltaX)';
+      #        ATAinv=inv(AT*AT');
+      #        A=(ATAinv*(AT*diag((rec_relative_distance[ ,k]).^algorithmParameter_gamma)*(Y_in-repmat(Y_in[k,],dim(Y_in)[1],1))))';
+
+      for (i in seq(1,dim(Y_in)[2])){
+        A[i,] <- CGNR_ATAx_ATb_with_weight(deltaX,Y_in[ ,i]-Y_in[k,i]*tempOnes,rec_relative_distance[ ,k]^algorithmParameter_gamma)
+      }
+
+      ## 2-2): Solve for x that minimizes the resodual using the weighted linear approximation
+      delta_X[k,] <- CGNR_ATAx_ATb_with_reg(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k])
+    }
+
+  }
+
+  return(delta_X)
+}
+
+
+main_iteration_version3_fast <-  function(X_in, Y_in, lambdaV, minX, maxX, targetMatrix, algorithmParameter_gamma){
+
+  #// aliveIndex: index of the parameter set in the cluster whose SSR have decreased in the previous iteration.
+  #// X_in: all set of parameters in the cluster from the previous itaration  X_in[i][j]: jth parameter value in the ith parameter set in the cluster
+  #// Y_in: all set of the function value (solution of the forward problem, f(parameter)) from the previous iteration
+  # global algorithmParameter_gamma
+
+
+  ##//STEP 1: Linear Approximation
+
+  YisNotNaN <- matrix(1,dim(X_in)[1],1)
+
+  for (k in 1:dim(Y_in)[1]){
+    for (i in 1:dim(Y_in)[2]){
+      if (is.nan(Y_in[k,i])|is.infinite(Y_in[k,i])){
+        YisNotNaN[k] <- 0
+      }
+    }
+  }
+
+  #// Linear approximation will be A x + y_o \approx f(x) = y for all y in Y matrix (stored in each row of Y matrix)
+  #// This can be written as A_with_y0 X_append_one_column^T \approx Y^T
+
+
+  kmean_result=optimal_kmeans(X_in)
+
+  while(min(table(kmean_result$cluster))<dim(X_in)[2]|min(kmean_result$withinss)==0){
+    kmean_result=kmeans(col_normalize(X_in),centers = length(unique(kmean_result$cluster))-1)
+  }
+
+  notAcceptableClusters=as.numeric(which(table(kmean_result$cluster)==1,arr.ind = TRUE))
+
+  relative_distance <- matrix(0,dim(X_in)[1],dim(X_in)[1])
+  rec_relative_distance <- matrix(0,dim(X_in)[1],dim(X_in)[1])
+
+
+  numClusters=length(unique(kmean_result$cluster))
+  sdMatrix=matrix(0,  dim(X_in)[2],dim(X_in)[1])
+
+  for(i in seq(1, numClusters)){
+    for(j in seq(1, dim(X_in)[2])){
+      sdMatrix[j,kmean_result$cluster==i]=sd(X_in[kmean_result$cluster==i,j])
+    }
+  }
+
+
+  tX_in=t(X_in)
+
+  for (i in seq(1,dim(X_in)[1])){
+  #  relative_distance[i,i] <- 0
+  #  rec_relative_distance[i,i] <- 0
+
+    useIndex=(kmean_result$cluster==kmean_result$cluster[i])
+    relative_distance[i,useIndex] = colSums(((tX_in[,useIndex]-tX_in[,i])/(sdMatrix[,useIndex]))^2)
+
+  #   if(i>1){
+  #
+  #
+  #
+  #
+  #     for (j in seq(1,(i-1))){
+  #     #  relative_distance[i,j] <- 0
+  #     #  relative_distance[j,i] <- 0
+  #
+  #       if(kmean_result$cluster[i]==kmean_result$cluster[j]){
+  #
+  #         for (k in seq(1,dim(X_in)[2])){
+  #           relative_distance[i,j] <- relative_distance[i,j]+((X_in[i,k]-X_in[j,k])/(sd(X_in[kmean_result$cluster==kmean_result$cluster[j],k])))^2
+  #         }
+  #       }else{
+  #         relative_distance[i,j] =0
+  #       }
+  #
+  #       if (YisNotNaN[i]==1&YisNotNaN[j]==1&relative_distance[i,j]!=0){
+  #
+  #         relative_distance[j,i] <- relative_distance[i,j]
+  #         rec_relative_distance[i,j] <- 1/relative_distance[i,j]
+  #         rec_relative_distance[j,i] <- rec_relative_distance[i,j]
+  #       } else {
+  #         relative_distance[i,j] <- 0
+  #         rec_relative_distance[i,j] <- 0
+  #         rec_relative_distance[j,i] <- 0
+  #       }
+  #
+  #     }
+  #
+  #   }
+  #
+   }
+
+
+  rec_relative_distance=1/relative_distance
+  rec_relative_distance[relative_distance==0]=0
+
+
+
+  # Linear approximation will be A_with_y0  X_append_one_column^T \approx Y^T now solve it for A_with_y0
+  # We solve for \min || X_append_one_column  A_with_y0^T - Y ||_F
+  # use CGNR and solve each row of A_with_y0 (i.e., each column of A_with_y0^T)
+  A <- matrix(0, dim(Y_in)[2],dim(X_in)[2])
+  deltaX <- matrix(0, dim(X_in)[1],dim(X_in)[2])
+  delta_X <- matrix(0, dim(X_in)[1],dim(X_in)[2])
+  tempOnes <- matrix(1, dim(Y_in)[1],1)
+
+  for (k in seq(1,dim(Y_in)[1])){
+    if(lambdaV[k]<10^10&(!(kmean_result$cluster[k] %in% notAcceptableClusters))){
+      ## 2-1): Construct weighted linear approximation of the nonlinear function
+      for (i in seq(1,dim(X_in)[1])){
+        deltaX[i,] <- X_in[i,]-X_in[k,]
+      }
+
+      # use the following code if one wishes to use MASS's matrix
+      # inverse function (ginv) instead of CGNR
+
+
+
+      rec_relative_distance_tempvec=(rec_relative_distance[ ,k])^algorithmParameter_gamma
+      rec_relative_distance_tempvec[is.infinite(rec_relative_distance_tempvec)]=max(c(10^10,rec_relative_distance_tempvec[!is.infinite(rec_relative_distance_tempvec)]))
+
+      AT=t(diag(rec_relative_distance_tempvec)%*%deltaX)
+
+      ATAinv=MASS::ginv(AT%*%t(AT))
+
+      delta_Y=Y_in
+
+      for(i in seq(1, dim(Y_in)[2])){
+        delta_Y[,i]=Y_in[,i]-Y_in[k,i]
+      }
+
+      A=t(ATAinv%*%(AT%*%diag((rec_relative_distance[ ,k])^algorithmParameter_gamma)%*%(delta_Y)));
+
+
+      #  for (i in seq(1,dim(Y_in)[2])){
+      #    A[i,] <- CGNR_ATAx_ATb_with_weight(deltaX,Y_in[ ,i]-Y_in[k,i]*tempOnes,rec_relative_distance[ ,k]^algorithmParameter_gamma)
+      #  }
+
+
+      ## 2-2): Solve for x that minimizes the resodual using the weighted linear approximation
+      delta_X[k,] <- CGNR_ATAx_ATb_with_reg(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k])
+    }
+
+  }
+
+  return(delta_X)
 }
 
 CGNR_ATAx_ATb <- function(A, b){#solves A^TA x = A^Tb
@@ -511,7 +1128,7 @@ CGNR_ATAx_ATb_with_weight=function(A, b, weight){
             b[i] <- weight[i]*b[i]
         }
     }
-    return(CGNR_ATAx_ATb(A,b))
+    return(CGNR_ATAx_ATb(A[weight!=0,],b[weight!=0]))
 }
 
 
@@ -559,3 +1176,170 @@ CGNR_ATAx_ATb_with_reg=function(A, b, lambda){#   //solves (A^TA+lambda I) x = A
     return(x)
 }
 
+
+
+CGNR_ATAx_ATb_with_regVec=function(A, b, lambda){#   //solves (A^TA+lambda_vec) x = A^Tb
+
+  num_max_iter <- dim(A)[1]
+
+  x <- matrix(0,dim(A)[2],1)
+
+  if (dim(A)[1]==length(b)){
+
+    r <- t(A)%*%t(b)
+    p <- r
+
+    innerProd_rr_old <- dot(r,r)
+    AtA <- t(A)%*%A
+    AtA_lambda <- AtA
+
+    for (i in seq(1,dim(AtA)[1])){
+      AtA_lambda[i,i] <- AtA_lambda[i,i]+lambda[i]
+    }
+
+
+    for (i in seq(1,num_max_iter)){
+      tempD <- dot(p,(AtA_lambda%*%p))
+      if (is.na(tempD)||tempD==0){
+        break
+      }
+      alpha <- innerProd_rr_old/tempD
+      x <- x+alpha*p
+      r <- r-alpha*(AtA_lambda%*%p)
+      innerProd_rr_new <- dot(r,r)
+      beta <- innerProd_rr_new/innerProd_rr_old
+      innerProd_rr_old <- innerProd_rr_new
+      if (innerProd_rr_old==0){
+        break
+      }
+      p <- r+beta*p
+    }
+  } else {
+    print('CGNR with reg error: matrix A and vetor b sizes do not make sense.')
+    print(paste('Size of A: ', toString(dim(A)[1])))
+    print(paste('Size of b: ', toString(length(b))))
+  }
+  return(x)
+}
+
+
+
+#' @title Cluster_Gauss_Newton_Bootstrap_method
+#' @description Conduct residual resampling bootstrap analyses using CGNM.
+#' @param CGNM_result (required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.
+#' @param nonlinearFunction (required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous).
+#' @param num_bootstrapSample (default: 200) \emph{A positive integer} number of bootstrap samples to generate.
+#' @param cutoff_pvalue (default: 0.05) \emph{A number} defines the rejection p-value for the first stage of acceptable computational result screening.
+#' @param numParametersIncluded (default: NA) \emph{A natural number} defines the number of parameter sets to be included in the assessment of the acceptable parameters.  If set NA then use all the parameters found by the CGNM.
+#' @param useAcceptedApproximateMinimizers (default: TRUE) \emph{TRUE or FALSE} If true then use chai-square and elbow method to choose maximum accepted SSR.  If false returns the indicies upto numParametersIncluded-th smallest SSR (or if numParametersIncluded=NA then use all the parameters found by the CGNM).
+#' @return list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
+#' \enumerate{\item X: \emph{a num_minimizersToFind by n matrix} which stores the approximate minimizers of the nonlinear least squares in each row. In the context of model fitting they are \strong{the estimated parameter sets}.
+#' \item Y: \emph{a num_minimizersToFind by m matrix} which stores the nonlinearFunction evaluated at the corresponding approximate minimizers in matrix X above. In the context of model fitting each row corresponds to \strong{the model simulations}.
+#' \item residual_history: \emph{a num_iteration by num_minimizersToFind matrix} storing sum of squares residual for all iterations.
+#' \item initialX: \emph{a num_minimizersToFind by n matrix} which stores the set of initial iterates.
+#' \item runSetting: a list containing all the input variables to Cluster_Gauss_Newton_method (i.e., nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ,algorithmParameter_initialLambda, algorithmParameter_gamma, num_minimizersToFind, num_iteration, saveLog, runName, textMemo).}
+#' @examples
+#' ##lip-flop kinetics (an example known to have two distinct solutions)
+#'
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=x[1]
+#'  V1=x[2]
+#'  CL_2=x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  log10(Cp)
+#'}
+#'
+#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10))
+#'
+#' acceptedApproximateMinimizers(CGNM_result)
+#'
+#  ## flip-flop kinetics using RxODE (an example known to have two distinct solutions)
+#' \dontrun{
+#' library(RxODE)
+#'
+#' model_text="
+#' d/dt(X_1)=-ka*X_1
+#' d/dt(C_2)=(ka*X_1-CL_2*C_2)/V1"
+#'
+#' model=RxODE(model_text)
+#' #define nonlinearFunction
+#' model_function=function(x){
+#'
+#' observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'
+#' theta <- c(ka=x[1],V1=x[2],CL_2=x[3])
+#' ev <- eventTable()
+#' ev$add.dosing(dose = 1000, start.time =0)
+#' ev$add.sampling(observation_time)
+#' odeSol=model$solve(theta, ev)
+#' log10(odeSol[,"C_2"])
+#'
+#' }
+#'
+#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(nonlinearFunction=model_function,
+#' targetVector = observation,
+#' initial_lowerRange = c(0.1,0.1,0.1),initial_upperRange =  c(10,10,10))}
+#'
+#' @export
+#' @import stats MASS
+
+
+#Cluster_Gauss_Newton_Bootstrap_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, num_bootstrapSample=200){
+
+Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction, num_bootstrapSample=200, cutoff_pvalue=0.05, numParametersIncluded=NA, useAcceptedApproximateMinimizers=TRUE){
+
+  targetVector=CGNM_result$runSetting$targetVector
+  initial_lowerRange=CGNM_result$runSetting$initial_lowerRange
+  initial_upperRange=CGNM_result$runSetting$initial_upperRange
+  num_minimizersToFind=CGNM_result$runSetting$num_minimizersToFind
+  num_iteration=CGNM_result$runSetting$num_iteration
+  saveLog=CGNM_result$runSetting$saveLog
+  runName=CGNM_result$runSetting$runName
+  textMemo=CGNM_result$runSetting$textMemo
+  algorithmParameter_initialLambda=CGNM_result$runSetting$algorithmParameter_initialLambda
+  algorithmParameter_gamma=CGNM_result$runSetting$algorithmParameter_gamma
+  algorithmVersion=CGNM_result$runSetting$algorithmVersion
+
+  #  CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind, num_iteration, saveLog, runName, textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix)
+
+  acceptParaIndex=acceptedIndecies(CGNM_result, cutoff_pvalue, numParametersIncluded, useAcceptedApproximateMinimizers)
+
+  if(length(acceptParaIndex)<50){
+    print(paste("WARNING: only", length(acceptParaIndex) ,"acceptable parameters found, may want to rerun with larger num_minimizersToFind and/or refine initial range."))
+    if(length(acceptParaIndex)<10){
+      stop("Too few accepted parameters.")
+    }
+  }
+
+
+  bootstrapTargetMatrix=matrix(NA, nrow=num_bootstrapSample, ncol = dim(CGNM_result$Y)[2])
+  bootstrapInitialMatrix=matrix(NA, nrow=num_bootstrapSample, ncol = dim(CGNM_result$X)[2])
+
+  residual_vec=targetVector-CGNM_result$Y[acceptParaIndex[1],]
+  residual_vec=residual_vec[!is.na(residual_vec)]
+
+  for(i in seq(1,num_bootstrapSample)){
+    bootstrapTargetMatrix[i,]=targetVector+sample(residual_vec,length(residual_vec), replace = TRUE)
+  }
+
+  bootstrapInitialMatrix=CGNM_result$X[sample(acceptParaIndex,num_bootstrapSample,replace=TRUE),]
+
+  CGNM_bootstrap_result=Cluster_Gauss_Newton_method(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind, num_iteration, saveLog, paste0(runName,"bootstrap"), textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, targetMatrix = bootstrapTargetMatrix)
+
+  return(CGNM_bootstrap_result)
+}

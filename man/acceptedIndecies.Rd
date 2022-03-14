@@ -4,7 +4,12 @@
 \alias{acceptedIndecies}
 \title{acceptedIndecies}
 \usage{
-acceptedIndecies(CGNM_result, cutoff_pvalue = 0.05, numParametersIncluded = NA)
+acceptedIndecies(
+  CGNM_result,
+  cutoff_pvalue = 0.05,
+  numParametersIncluded = NA,
+  useAcceptedApproximateMinimizers = TRUE
+)
 }
 \arguments{
 \item{CGNM_result}{(required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.}
@@ -12,6 +17,8 @@ acceptedIndecies(CGNM_result, cutoff_pvalue = 0.05, numParametersIncluded = NA)
 \item{cutoff_pvalue}{(default: 0.05) \emph{A number} defines the rejection p-value for the first stage of acceptable computational result screening.}
 
 \item{numParametersIncluded}{(default: NA) \emph{A natural number} defines the number of parameter sets to be included in the assessment of the acceptable parameters.  If set NA then use all the parameters found by the CGNM.}
+
+\item{useAcceptedApproximateMinimizers}{(default: TRUE) \emph{TRUE or FALSE} If true then use chai-square and elbow method to choose maximum accepted SSR.  If false returns the parameters upto numParametersIncluded-th smallest SSR (or if numParametersIncluded=NA then use all the parameters found by the CGNM).}
 }
 \value{
 \emph{A vector of natural number} that contains the indices of accepted approximate minimizers found by CGNM.
@@ -20,7 +27,6 @@ acceptedIndecies(CGNM_result, cutoff_pvalue = 0.05, numParametersIncluded = NA)
 CGNM find multiple sets of minimizers of the nonlinear least squares (nls) problem by solving nls from various initial iterates.  Although CGNM is shown to be robust compared to other conventional multi-start algorithms, not all initial iterates minimizes successfully.  By assuming sum of squares residual (SSR) follows the chai-square distribution we first reject the approximated minimiser who SSR is statistically significantly worse than the minimum SSR found by the CGNM.  Then use elbow-method (a heuristic often used in mathematical optimisation to balance the quality and the quantity of the solution found) to find the "acceptable" maximum SSR. This function outputs the indices of acceptable approximate minimizers of the nonlinear least squares problem found by the CGNM.
 }
 \examples{
-library(parallel) #if parallel library is loaded CGNM paralleizes the algorithm automatically
 
 model_analytic_function=function(x){
 

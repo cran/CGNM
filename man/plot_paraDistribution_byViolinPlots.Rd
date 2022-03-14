@@ -8,7 +8,8 @@ plot_paraDistribution_byViolinPlots(
   CGNM_result,
   cutoff_pvalue = 0.05,
   numParametersIncluded = NA,
-  ParameterNames = NA
+  ParameterNames = NA,
+  useAcceptedApproximateMinimizers = TRUE
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ plot_paraDistribution_byViolinPlots(
 \item{numParametersIncluded}{(default: NA) \emph{A natural number} defines the number of parameter sets to be included in the assessment of the acceptable parameters.  If set NA then use all the parameters found by the CGNM.}
 
 \item{ParameterNames}{(default: NA) \emph{A vector of string} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x_1, x_2, ...)}
+
+\item{useAcceptedApproximateMinimizers}{(default: TRUE) \emph{TRUE or FALSE} If true then use chai-square and elbow method to choose maximum accepted SSR.  If false use parameters upto numParametersIncluded-th smallest SSR (or if numParametersIncluded=NA then use all the parameters found by the CGNM).}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
@@ -27,7 +30,6 @@ plot_paraDistribution_byViolinPlots(
 Make violin plot to compare the initial distribution and distribition of the accepted approximate minimizers found by the CGNM. Bars in the violin plots indicates the interquartile range. The solid line connects the interquartile ranges of the initial distribution and the distribution of the accepted approximate minimizer at the final iterate.  The blacklines connets the minimums and maximums of the initial distribution and the distribution of the accepted approximate minimizer at the final iterate. The black dots indicate the median.
 }
 \examples{
-library(parallel) #if parallel library is loaded CGNM paralleizes the algorithm automatically
 
 model_analytic_function=function(x){
 
