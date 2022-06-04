@@ -42,11 +42,20 @@ initial_lowerRange = c(0.1,0.1,0.1),initial_upperRange =  c(10,10,10))
 head(acceptedApproximateMinimizers(CGNM_result))
 
 ## -----------------------------------------------------------------------------
+CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result, nonlinearFunction=model_function)
+
+## -----------------------------------------------------------------------------
 library(ggplot2)
 
 ## ---- fig.width=6, fig.height=3.5---------------------------------------------
 plot_Rank_SSR(CGNM_result)
 
 ## ---- fig.width=6, fig.height=3.5---------------------------------------------
-plot_paraDistribution_byViolinPlots(CGNM_result)
+plot_paraDistribution_byHistogram(CGNM_bootstrap,  ParameterNames=c("Ka","V1","CL_2"), ReparameterizationDef=c("x1","x2","x3"), bins = 50)
+
+## -----------------------------------------------------------------------------
+plot_goodnessOfFit(CGNM_result, plotType = 1, independentVariableVector = c(0.1,0.2,0.4,0.6,1,2,3,6,12), plotRank = seq(1,50))
+
+## -----------------------------------------------------------------------------
+plot_goodnessOfFit(CGNM_bootstrap, plotType = 1, independentVariableVector = c(0.1,0.2,0.4,0.6,1,2,3,6,12))
 

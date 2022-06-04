@@ -6,25 +6,22 @@
 \usage{
 plot_SSR_parameterValue(
   CGNM_result,
-  cutoff_pvalue = 0.05,
-  numParametersIncluded = NA,
+  indicesToInclude = NA,
   ParameterNames = NA,
-  showInitialRange = TRUE,
-  useAcceptedApproximateMinimizers = TRUE
+  ReparameterizationDef = NA,
+  showInitialRange = TRUE
 )
 }
 \arguments{
 \item{CGNM_result}{(required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.}
 
-\item{cutoff_pvalue}{(default: 0.05) \emph{A number} defines the rejection p-value for the first stage of acceptable computational result screening.}
+\item{indicesToInclude}{(default: NA) \emph{A vector of integers} indices to include in the plot (if NA, use indices chosen by the acceptedIndices() function with default setting).}
 
-\item{numParametersIncluded}{(default: NA) \emph{A natural number} defines the number of parameter sets to be included in the assessment of the acceptable parameters.  If set NA then use all the parameters found by the CGNM.}
+\item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x1, x2, ...)}
 
-\item{ParameterNames}{(default: NA) \emph{A vector of string} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x_1, x_2, ...)}
+\item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax and also refer to the ith element of the x vector (the input variable to the nonlinear function) as xi (e.g., if the first input variable to the nonlinear function is defined as x1=log10(Ka), then by setting "10^x1" as one of the strings in this vector, you can plot the violin plot of Ka)}
 
 \item{showInitialRange}{(default: TRUE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
-
-\item{useAcceptedApproximateMinimizers}{(default: TRUE) \emph{TRUE or FALSE} If true then use chai-square and elbow method to choose maximum accepted SSR.  If false use parameters upto numParametersIncluded-th smallest SSR (or if numParametersIncluded=NA then use all the parameters found by the CGNM).}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.

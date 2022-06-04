@@ -74,20 +74,39 @@ initial_lowerRange = c(0.1,0.1,0.1),initial_upperRange =  c(10,10,10))
 head(acceptedApproximateMinimizers(CGNM_result))
 ```
 
-## Visualize the distributions of the parameters found by CGNM
+## Can run residual resampling bootstrap analyses using CGNM as well
+```{r}
+CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result, nonlinearFunction=model_function)
+```
+
+## Visualize the CGNM modelfit analysis result
 To use the plot functions the user needs to manually load ggplot2.
 
 ```{r}
 library(ggplot2)
 ```
 
+### Inspect the distribution of SSR of approximate minimizers found by CGNM
+
+Despite the robustness of the algorithm not all approximate minimizers converge so here we visually inspect to see how many of the approximate minimizers we consider to have the similar SSR to the minimum SSR.  Currently the algorithm automatically choose "acceptable" approximate minimizer based on Grubbs' Test for Outliers.  If for whatever the reason this criterion is not satisfactly the users can manually set the indicies of the acceptable approximat minimizers.
 
 ```{r, fig.width=6, fig.height=3.5}
 plot_Rank_SSR(CGNM_result)
 ```
 
 ```{r, fig.width=6, fig.height=3.5}
-plot_paraDistribution_byViolinPlots(CGNM_result)
+plot_paraDistribution_byHistogram(CGNM_bootstrap,  ParameterNames=c("Ka","V1","CL_2"), ReparameterizationDef=c("x1","x2","x3"), bins = 50)
+```
+
+### visually inspect goodness of fit of top 50 approximate minimizers
+```{r}
+plot_goodnessOfFit(CGNM_result, plotType = 1, independentVariableVector = c(0.1,0.2,0.4,0.6,1,2,3,6,12), plotRank = seq(1,50))
+```
+
+### plot model prediction with uncertainties based on residual resampling bootstrap analysis
+
+```{r}
+plot_goodnessOfFit(CGNM_bootstrap, plotType = 1, independentVariableVector = c(0.1,0.2,0.4,0.6,1,2,3,6,12))
 ```
 
 

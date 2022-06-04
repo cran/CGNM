@@ -4,24 +4,12 @@
 \alias{plot_parameterValue_scatterPlots}
 \title{plot_parameterValue_scatterPlots}
 \usage{
-plot_parameterValue_scatterPlots(
-  CGNM_result,
-  cutoff_pvalue = 0.05,
-  numParametersIncluded = NA,
-  ParameterNames = NA,
-  useAcceptedApproximateMinimizers = TRUE
-)
+plot_parameterValue_scatterPlots(CGNM_result, indicesToInclude = NA)
 }
 \arguments{
 \item{CGNM_result}{(required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.}
 
-\item{cutoff_pvalue}{(default: 0.05) \emph{A number} defines the rejection p-value for the first stage of acceptable computational result screening.}
-
-\item{numParametersIncluded}{(default: NA) \emph{A natural number} defines the number of parameter sets to be included in the assessment of the acceptable parameters.  If set NA then use all the parameters found by the CGNM.}
-
-\item{ParameterNames}{(default: NA) \emph{A vector of string} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x_1, x_2, ...)}
-
-\item{useAcceptedApproximateMinimizers}{(default: TRUE) \emph{TRUE or FALSE} If true then use chai-square and elbow method to choose maximum accepted SSR.  If false use parameters upto numParametersIncluded-th smallest SSR (or if numParametersIncluded=NA then use all the parameters found by the CGNM).}
+\item{indicesToInclude}{(default: NA) \emph{A vector of integers} indices to include in the plot (if NA, use indices chosen by the acceptedIndices() function with default setting).}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.

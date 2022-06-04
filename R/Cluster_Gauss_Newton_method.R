@@ -1,6 +1,5 @@
 ## TODO implement check function (check if the nonlinear function is evaluable at the middle of the cluster and then same length as the observation)
 ## TODO remove parallel statements from the documentation
-## TODO remove NA in the observation
 
 repmat=function(subM,numrows,numcol){
 
@@ -92,7 +91,7 @@ optimal_kmeans=function(data_in){
     elbow_ind=(elbow_index(residual))
 
     if(length(elbow_ind)>0){
-      kmeans(normalized_data,(elbow_ind+1))
+      kmeans(normalized_data,(elbow_ind[1]+1))
     }else{
       kmeans(normalized_data,1)
     }
@@ -1229,15 +1228,12 @@ CGNR_ATAx_ATb_with_regVec=function(A, b, lambda){#   //solves (A^TA+lambda_vec) 
 #' @param CGNM_result (required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.
 #' @param nonlinearFunction (required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous).
 #' @param num_bootstrapSample (default: 200) \emph{A positive integer} number of bootstrap samples to generate.
-#' @param cutoff_pvalue (default: 0.05) \emph{A number} defines the rejection p-value for the first stage of acceptable computational result screening.
-#' @param numParametersIncluded (default: NA) \emph{A natural number} defines the number of parameter sets to be included in the assessment of the acceptable parameters.  If set NA then use all the parameters found by the CGNM.
-#' @param useAcceptedApproximateMinimizers (default: TRUE) \emph{TRUE or FALSE} If true then use chai-square and elbow method to choose maximum accepted SSR.  If false returns the indicies upto numParametersIncluded-th smallest SSR (or if numParametersIncluded=NA then use all the parameters found by the CGNM).
-#' @return list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
-#' \enumerate{\item X: \emph{a num_minimizersToFind by n matrix} which stores the approximate minimizers of the nonlinear least squares in each row. In the context of model fitting they are \strong{the estimated parameter sets}.
-#' \item Y: \emph{a num_minimizersToFind by m matrix} which stores the nonlinearFunction evaluated at the corresponding approximate minimizers in matrix X above. In the context of model fitting each row corresponds to \strong{the model simulations}.
-#' \item residual_history: \emph{a num_iteration by num_minimizersToFind matrix} storing sum of squares residual for all iterations.
-#' \item initialX: \emph{a num_minimizersToFind by n matrix} which stores the set of initial iterates.
-#' \item runSetting: a list containing all the input variables to Cluster_Gauss_Newton_method (i.e., nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ,algorithmParameter_initialLambda, algorithmParameter_gamma, num_minimizersToFind, num_iteration, saveLog, runName, textMemo).}
+#' @param indicesToUseAsInitialIterates (default: NA) \emph{A vector of integers} indices to use for initial iterate of the bootstrap analyses.  For CGNM bootstrap, we use the parameters found by CGNM as the initial iterates, here you can manually spccify which of the approximate minimizers that was found by CGNM (where the CGNM computation result is given as CGNM_result file) to use as initial iterates.  (if NA, use indices chosen by the acceptedIndices() function with default setting).
+#' @return list of a matrix X, Y,residual_history, initialX, bootstrapX, bootstrapY as well as a list runSetting.
+#' \enumerate{\item X, Y, residual_history, initialX: identical to what was given as CGNM_result.
+#' \item X: \emph{a num_bootstrapSample by n matrix} which stores the the X values that was sampled using residual resampling bootstrap analyses (In terms of model fitting this is the parameter combinations with variabilities that represent \strong{parameter estimation uncertainties}.).
+#' \item Y: \emph{a num_bootstrapSample by m matrix} which stores the nonlinearFunction evaluated at the corresponding bootstrap analyses results in matrix bootstrapX above. In the context of model fitting each row corresponds to \strong{the model simulations}.
+#' \item runSetting: identical to what is given as CGNM_result but in addition including num_bootstrapSample and indicesToUseAsInitialIterates.}
 #' @examples
 #' ##lip-flop kinetics (an example known to have two distinct solutions)
 #'
@@ -1264,44 +1260,19 @@ CGNR_ATAx_ATb_with_regVec=function(A, b, lambda){#   //solves (A^TA+lambda_vec) 
 #' targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10))
 #'
-#' acceptedApproximateMinimizers(CGNM_result)
-#'
-#  ## flip-flop kinetics using RxODE (an example known to have two distinct solutions)
-#' \dontrun{
-#' library(RxODE)
-#'
-#' model_text="
-#' d/dt(X_1)=-ka*X_1
-#' d/dt(C_2)=(ka*X_1-CL_2*C_2)/V1"
-#'
-#' model=RxODE(model_text)
-#' #define nonlinearFunction
-#' model_function=function(x){
-#'
-#' observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
-#'
-#' theta <- c(ka=x[1],V1=x[2],CL_2=x[3])
-#' ev <- eventTable()
-#' ev$add.dosing(dose = 1000, start.time =0)
-#' ev$add.sampling(observation_time)
-#' odeSol=model$solve(theta, ev)
-#' log10(odeSol[,"C_2"])
-#'
-#' }
-#'
-#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
-#'
-#' CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(nonlinearFunction=model_function,
-#' targetVector = observation,
-#' initial_lowerRange = c(0.1,0.1,0.1),initial_upperRange =  c(10,10,10))}
+#' CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,
+#'      nonlinearFunction=model_analytic_function, num_bootstrapSample=100)
+#' plot_paraDistribution_byHistogram(CGNM_bootstrap,
+#'  ParameterNames=c("Ka","V1","CL_2"), ReparameterizationDef=c("x1","x2","x3"))
 #'
 #' @export
 #' @import stats MASS
 
+Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction, num_bootstrapSample=200, indicesToUseAsInitialIterates=NA){
 
-#Cluster_Gauss_Newton_Bootstrap_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, num_bootstrapSample=200){
-
-Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction, num_bootstrapSample=200, cutoff_pvalue=0.05, numParametersIncluded=NA, useAcceptedApproximateMinimizers=TRUE){
+  cutoff_pvalue=0.05
+  numParametersIncluded=NA
+  useAcceptedApproximateMinimizers=TRUE
 
   targetVector=CGNM_result$runSetting$targetVector
   initial_lowerRange=CGNM_result$runSetting$initial_lowerRange
@@ -1316,8 +1287,11 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
   algorithmVersion=CGNM_result$runSetting$algorithmVersion
 
   #  CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind, num_iteration, saveLog, runName, textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix)
-
-  acceptParaIndex=acceptedIndecies(CGNM_result, cutoff_pvalue, numParametersIncluded, useAcceptedApproximateMinimizers)
+if(is.na(indicesToUseAsInitialIterates[1])){
+  acceptParaIndex=acceptedIndices(CGNM_result, cutoff_pvalue, numParametersIncluded, useAcceptedApproximateMinimizers)
+}else{
+  acceptParaIndex=indicesToUseAsInitialIterates[indicesToUseAsInitialIterates<=dim(CGNM_result$X)[1]]
+}
 
   if(length(acceptParaIndex)<50){
     print(paste("WARNING: only", length(acceptParaIndex) ,"acceptable parameters found, may want to rerun with larger num_minimizersToFind and/or refine initial range."))
@@ -1341,5 +1315,14 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
 
   CGNM_bootstrap_result=Cluster_Gauss_Newton_method(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind, num_iteration, saveLog, paste0(runName,"bootstrap"), textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, targetMatrix = bootstrapTargetMatrix)
 
-  return(CGNM_bootstrap_result)
+  CGNM_result$bootstrapX=CGNM_bootstrap_result$X
+  CGNM_result$bootstrapY=CGNM_bootstrap_result$Y
+  CGNM_result$runSetting$num_bootstrapSample=num_bootstrapSample
+  CGNM_result$runSetting$indicesToUseAsInitialIterates=indicesToUseAsInitialIterates
+
+  if(CGNM_result$runSetting$saveLog){
+    save(file =paste0("CGNM_log_",runName,"bootstrap/CGNM_bootstrapResult.RDATA"),CGNM_result)
+  }
+
+  return(CGNM_result)
 }

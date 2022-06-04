@@ -8,7 +8,8 @@ acceptedApproximateMinimizers(
   CGNM_result,
   cutoff_pvalue = 0.05,
   numParametersIncluded = NA,
-  useAcceptedApproximateMinimizers = TRUE
+  useAcceptedApproximateMinimizers = TRUE,
+  algorithm = 2
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ acceptedApproximateMinimizers(
 \item{numParametersIncluded}{(default: NA) \emph{A natural number} defines the number of parameter sets to be included in the assessment of the acceptable parameters.  If set NA then use all the parameters found by the CGNM.}
 
 \item{useAcceptedApproximateMinimizers}{(default: TRUE) \emph{TRUE or FALSE} If true then use chai-square and elbow method to choose maximum accepted SSR.  If false returns the parameters upto numParametersIncluded-th smallest SSR (or if numParametersIncluded=NA then use all the parameters found by the CGNM).}
+
+\item{algorithm}{(default: 2) \emph{1 or 2} specify the algorithm used for obtain accepted approximate minimizers. (Algorithm 1 uses elbow method, Algorithm 2 uses Grubbs' Test for Outliers.)}
 }
 \value{
 \emph{A matrix} that each row stores the accepted approximate minimizers found by CGNM.
