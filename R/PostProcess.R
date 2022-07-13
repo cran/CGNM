@@ -584,6 +584,274 @@ plot_paraDistribution_byHistogram=function(CGNM_result, indicesToInclude=NA, Par
 }
 
 
+
+#' @title plot_profileLikelihood
+#' @description
+#' Draw profile likelihood surface using the function evaluations conducted during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().  The grey horizontal line is the threshold for 95% pointwise confidence interval.
+#' @param logLocation (required input) \emph{A string} of folder directory where CGNM computation log files exist.
+#' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
+#' @param ParameterNames (default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x1, x2, ...)
+#' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax and also refer to the ith element of the x vector (the input variable to the nonlinear function) as xi (e.g., if the first input variable to the nonlinear function is defined as x1=log10(Ka), then by setting "10^x1" as one of the strings in this vector, you can plot the violin plot of Ka)
+#' @param showInitialRange (default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
+#' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+#' @examples
+#'\dontrun{
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=x[1]
+#'  V1=x[2]
+#'  CL_2=x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  log10(Cp)
+#'}
+#'
+#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation,
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+#' num_iter = 10, num_minimizersToFind = 100, saveLog=TRUE)
+#'
+#' plot_profileLikelihood("CGNM_log")
+#' }
+#' @export
+#' @import ggplot2
+plot_profileLikelihood=function(logLocation, numBins=NA,  ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE){
+  plot_SSRsurface(logLocation, profile_likelihood=TRUE, numBins=numBins, ParameterNames=ParameterNames, ReparameterizationDef=ReparameterizationDef, showInitialRange=showInitialRange)
+  }
+
+#' @title plot_SSRsurface
+#' @description
+#' Make minimum SSR v.s. parameterValue plot using the function evaluations used during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().
+#' @param logLocation (required input) \emph{A string or a list of strings} of folder directory where CGNM computation log files exist.
+#' @param profile_likelihood (default: FALSE) \emph{TRUE or FALSE} If set TRUE plot profile likelihood (assuming normal distribution of residual) instead of SSR surface.
+#' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
+#' @param maxSSR (default: NA) \emph{A positive number} the maximum SSR that will be plotted on SSR surface plot.  This option is used to zoom into the SSR surface near the minimum SSR.
+#' @param ParameterNames (default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x1, x2, ...)
+#' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax and also refer to the ith element of the x vector (the input variable to the nonlinear function) as xi (e.g., if the first input variable to the nonlinear function is defined as x1=log10(Ka), then by setting "10^x1" as one of the strings in this vector, you can plot the violin plot of Ka)
+#' @param showInitialRange (default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
+#' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+#' @examples
+#'\dontrun{
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=x[1]
+#'  V1=x[2]
+#'  CL_2=x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  log10(Cp)
+#'}
+#'
+#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation,
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+#' num_iter = 10, num_minimizersToFind = 100, saveLog=TRUE)
+#'
+#' plot_SSRsurface("CGNM_log") + scale_y_continuous(trans='log10')
+#' }
+#' @export
+#' @import ggplot2
+plot_SSRsurface=function(logLocation, profile_likelihood=FALSE, numBins=NA, maxSSR=NA, ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE){
+
+  CGNM_result=NULL
+  minSSR=NULL
+  negative2LogLikelihood=NULL
+  value=NULL
+  boundValue=NULL
+
+
+  if(typeof(logLocation)=="character"){
+    DirectoryName_vec=c(logLocation)
+
+  }else if(typeof(logLocation)=="list"){
+      if(logLocation$runSetting$runName==""){
+        DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
+      }else{
+        DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
+      }
+
+
+
+  }else{
+    warning("DirectoryName need to be either the CGNM_result object or a string")
+  }
+
+
+  load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
+
+
+  if(is.na(ParameterNames[1])|length(ParameterNames)!=length(ReparameterizationDef)){
+    ParameterNames=ReparameterizationDef
+  }
+
+  if(is.na(ParameterNames[1])){
+    ParameterNames=paste0("x",seq(1,dim(CGNM_result$initialX)[2]))
+    ReparameterizationDef=ParameterNames
+  }
+
+
+
+
+  if(is.na(numBins)){
+    numBins=round(CGNM_result$runSetting$num_minimizersToFind/10)
+  }
+
+
+  rawX_nu=CGNM_result$initialX
+  R_nu=CGNM_result$residual_history[,1]
+
+  initiLNLfunc=CGNM_result$runSetting$nonlinearFunction
+
+  residual_variance_vec=c()
+
+  for(DirectoryName in DirectoryName_vec){
+
+    checkNL=TRUE
+    for(i in seq(1,CGNM_result$runSetting$num_iteration)){
+      fileName=paste0(DirectoryName,"/iteration_",i,".RDATA")
+      if (file.exists(fileName)){
+        load(fileName)
+        if(identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
+          rawX_nu=rbind(rawX_nu,CGNM_result$X)
+          R_nu=c(R_nu, CGNM_result$residual_history[,dim(CGNM_result$residual_history)[2]])
+          if(checkNL){
+            print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
+            checkNL=FALSE
+          }
+        }else if(checkNL){
+          print(paste0("log saved in ",getwd(),"/",DirectoryName," will NOT be used as the nonlinear function used in this log is not the same as ",getwd(),"/",DirectoryName[1]))
+          checkNL=FALSE
+        }
+      }
+    }
+
+    residual_variance_vec=c(residual_variance_vec, min(CGNM_result$residual_history,na.rm = TRUE)/sum(!is.na(CGNM_result$runSetting$targetVector)))
+
+  }
+
+  residual_variance=min(residual_variance_vec)
+
+  rawXinit=CGNM_result$initialX
+  reparaXinit=data.frame(row.names = seq(1,dim(rawXinit)[1]))
+
+  colnames(rawXinit)=paste0("x",seq(1,dim(rawXinit)[2]))
+  rawXinit=data.frame(rawXinit)
+
+  for(i in seq(1,length(ParameterNames))){
+    reparaXinit[,ParameterNames[i]]=with(rawXinit, eval(parse(text=ReparameterizationDef[i])))
+  }
+
+
+#
+#   for(i in seq(1,CGNM_result$runSetting$num_iteration)){
+#     fileName=paste0(DirectoryName,"bootstrap/iteration_",i,".RDATA")
+#
+#
+#     if (file.exists(fileName)){
+#       load(fileName)
+#       rawX_nu=rbind(rawX_nu,CGNM_result$X)
+#
+#       R_temp=c()
+#       for(j in seq(1, dim(CGNM_result$Y)[1])){
+#         R_temp=c(R_temp,sum((CGNM_result$Y[j,]-CGNM_result$runSetting$targetVector)^2,na.rm = TRUE))
+#       }
+#
+#       R_nu=c(R_nu, R_temp)
+#     }
+#   }
+
+
+
+  tempMatrix=unique(cbind(rawX_nu,R_nu))
+  rawX_nu=tempMatrix[,seq(1,dim(rawX_nu)[2])]
+  R_nu=tempMatrix[,dim(tempMatrix)[2]]
+
+  colnames(rawX_nu)=paste0("x",seq(1,dim(rawX_nu)[2]))
+  rawX_nu=data.frame(rawX_nu)
+
+  X_nu=data.frame(row.names = seq(1,dim(rawX_nu)[1]))
+  for(i in seq(1,length(ParameterNames))){
+    X_nu[,ParameterNames[i]]=with(rawX_nu, eval(parse(text=ReparameterizationDef[i])))
+  }
+
+
+  likelihoodSurfacePlot_df=data.frame()
+
+  for(j in seq(1,length(ParameterNames))){
+    for(i in seq(1,numBins)){
+      binUpper=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[2]
+      binLower=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[1]
+      indexToUse=((X_nu[,j]<=binUpper)&(X_nu[,j]>binLower))
+      likelihoodSurfacePlot_df=rbind(likelihoodSurfacePlot_df, data.frame(value=X_nu[which(R_nu==min(R_nu[indexToUse],na.rm = TRUE)),j], minSSR=min(R_nu[indexToUse]), parameterName=ParameterNames[j]))
+
+    }
+  }
+
+#  ggplot(likelihoodSurfacePlot_df, aes(x=value,y=minSSR))+geom_point()+facet_wrap(.~parameterName,scales = "free")+geom_smooth()+ylim(0.5,1)
+
+  if(!is.na(maxSSR)){
+    likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, minSSR<=maxSSR)
+  }
+
+  likelihoodSurfacePlot_df$negative2LogLikelihood=likelihoodSurfacePlot_df$minSSR/residual_variance
+
+
+  if(profile_likelihood){
+    likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, negative2LogLikelihood<=(2*(3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood))))
+
+    g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=negative2LogLikelihood))+ggplot2::geom_point()+ggplot2::geom_line()
+
+  }else{
+    g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=minSSR))+ggplot2::geom_point()+ggplot2::geom_line()
+
+  }
+
+#  g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=minSSR))+ggplot2::geom_point()+ggplot2::geom_line()
+
+
+
+  if(showInitialRange){
+    Xinit_min=c()
+    Xinit_max=c()
+    for(i in seq(1,dim(reparaXinit)[2])){
+      Xinit_min=c(Xinit_min,min(reparaXinit[,i]))
+      Xinit_max=c(Xinit_max,max(reparaXinit[,i]))
+    }
+
+    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_min, parameterName=ParameterNames), ggplot2::aes(xintercept=boundValue), colour="gray")
+    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_max, parameterName=ParameterNames), ggplot2::aes(xintercept=boundValue), colour="gray")
+  }
+
+  if(profile_likelihood){
+    g=g+ggplot2::facet_wrap(.~parameterName,scales = "free_x")+ggplot2::ylab("-2log likelihood")+ggplot2::xlab("Parameter Value")
+    g=g+ggplot2::geom_hline(yintercept = 3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood), colour="grey")
+
+  }else{
+    g=g+ggplot2::facet_wrap(.~parameterName,scales = "free_x")+ggplot2::ylab("SSR")+ggplot2::xlab("Parameter Value")
+
+  }
+
+  return(g)
+}
+
 #' @title plot_SSR_parameterValue
 #' @description
 #' Make SSR v.s. parameterValue plot of the accepted approximate minimizers found by the CGNM. Bars in the violin plots indicates the interquartile range.

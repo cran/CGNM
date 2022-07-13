@@ -1,4 +1,3 @@
-## TODO implement check function (check if the nonlinear function is evaluable at the middle of the cluster and then same length as the observation)
 ## TODO remove parallel statements from the documentation
 
 repmat=function(subM,numrows,numcol){
@@ -224,6 +223,7 @@ CGNM_input_test <- function(nonlinearFunction, targetVector, initial_lowerRange,
 #' @param targetVector (required input) \emph{A vector of real number of length m} where we minimize the Euclidean distance between the nonlinearFuncition and targetVector.  In the context of curve fitting targetVector can be though as \strong{the observational data}.
 #' @param initial_lowerRange (required input) \emph{A vector of real number of length n} where each element represents  \strong{the lower range of the initial iterate}. Similarly to regular Gauss-Newton method, CGNM iteratively reduce the residual to find minimizers.  Essential differences is that CGNM start from the initial RANGE and not an initial point. Note that CGNM is an unconstraint optimization method so the final minimizer can be anywhere (and outside of this specified range).  In the parameter estimation problem, there often is a constraints to the parameters (e.g., parameters cannot be negative).. If you wish to constraint the parameter domain do so via parameter transformation (e.g., if parameter needs to be positive do log transform, if there is upper and lower bounds consider using logit transform.)
 #' @param initial_upperRange (required input) \emph{A vector of real number of length n} where each element represents  \strong{the upper range of the initial iterate}.
+#' @param stayIn_initialRange (default: FALSE) \emph{TRUE or FALSE} if set TRUE, the parameter search will conducted strictly within the range specified by initial_lowerRange and initial_upperRange.
 #' @param num_minimizersToFind  (default: 250) \emph{A positive integer} defining number of approximate minimizers CGNM will find. We usually \strong{use 250 when testing the model and 1000 for the final analysis}.  The computational cost increase proportionally to this number; however, larger number algorithm becomes more stable and increase the chance of finding more better minimizers. See Appendix C of our paper for detail.
 #' @param num_iteration (default: 25)  \emph{A positive integer} defining maximum number of iterations. We usually \strong{set 25 while model building and 100 for final analysis}.  Given each point terminates the computation when the convergence criterion is met the computation cost does not grow proportionally to the number of iterations (hence safe to increase this without significant increase in the computational cost).
 #' @param saveLog (default: FALSE) \emph{TRUE or FALSE} indicating either or not to save computation result from each iteration in CGNM_log folder. It requires disk write access right in the current working directory. \strong{Recommended to set TRUE if the computation is expected to take long time} as user can retrieve intrim computation result even if the computation is terminated prematurely (or even during the computation).
@@ -234,6 +234,7 @@ CGNM_input_test <- function(nonlinearFunction, targetVector, initial_lowerRange,
 #' @param algorithmVersion (default: 3.0) \emph{A positive number} user can choose different version of CGNM algorithm currently 1.0 and 3.0 are available.  If number chosen other than 1.0 or 3.0 it will choose 1.0.
 #' @param initialIterateMatrix (default: NA) \emph{A matrix} with dimension num_minimizersToFind x n.  User can provide initial iterate as a matrix  This input is used when the user wishes not to generate initial iterate randomly from the initial range.  The user is responsible for ensuring all function evaluation at each initial iterate does not produce NaN.
 #' @param targetMatrix (default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple target vectors in the matrix form.  This input is mainly used when running bootstrap method and not intended to be used for other purposes.
+#' @param keepInitialDistribution (default: NA) \emph{A vector of TRUE or FALSE} of length n User can specify if the initial distribution of one of the input variable (e.g. parameter) to be kept as the initial iterate throughout CGNM iterations.
 #' @return list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
 #' \enumerate{\item X: \emph{a num_minimizersToFind by n matrix} which stores the approximate minimizers of the nonlinear least squares in each row. In the context of model fitting they are \strong{the estimated parameter sets}.
 #' \item Y: \emph{a num_minimizersToFind by m matrix} which stores the nonlinearFunction evaluated at the corresponding approximate minimizers in matrix X above. In the context of model fitting each row corresponds to \strong{the model simulations}.
@@ -301,7 +302,7 @@ CGNM_input_test <- function(nonlinearFunction, targetVector, initial_lowerRange,
 #' @import stats MASS
 
 
-Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA){
+Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, keepInitialDistribution=NA){
 
   targetMatrix_in=targetMatrix
 
@@ -328,7 +329,7 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
   }
 
   textMemo=paste0("CGNM algorithm version ",algorithmVersion,"\n\n",textMemo)
-  runSetting=list(nonlinearFunction=nonlinearFunction, targetVector=targetVector, initial_lowerRange=initial_lowerRange, initial_upperRange=initial_upperRange ,algorithmParameter_initialLambda=algorithmParameter_initialLambda, algorithmParameter_gamma=algorithmParameter_gamma, num_minimizersToFind=num_minimizersToFind, num_iteration=num_iteration, saveLog=saveLog, runName=runName, textMemo=textMemo, algorithmVersion=algorithmVersion, initialIterateMatrix=initialIterateMatrix, targetMatrix=targetMatrix)
+  runSetting=list(nonlinearFunction=nonlinearFunction, targetVector=targetVector, initial_lowerRange=initial_lowerRange, initial_upperRange=initial_upperRange, stayIn_initialRange=stayIn_initialRange,algorithmParameter_initialLambda=algorithmParameter_initialLambda, algorithmParameter_gamma=algorithmParameter_gamma, num_minimizersToFind=num_minimizersToFind, num_iteration=num_iteration, saveLog=saveLog, runName=runName, textMemo=textMemo, algorithmVersion=algorithmVersion, initialIterateMatrix=initialIterateMatrix, targetMatrix=targetMatrix)
 
   testCGNMinput=TRUE
 
@@ -356,8 +357,11 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
 
   saveFolderName="CGNM_log"
   if(runName=="TIME"){
-    saveFolderName=paste0(saveFolderName,"_",Sys.time())
-  }else if(runName!=""){
+    runName=as.character( Sys.time())
+    runSetting$runName=runName
+  }
+
+  if(runName!=""){
     saveFolderName=paste0(saveFolderName,"_",runName)
   }
 
@@ -477,7 +481,7 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
 
       if(algorithmVersion==3){
 
-        out_temp <- main_iteration_version3_fast(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse)
+        out_temp <- main_iteration_version3_fast(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse, stayIn_initialRange=stayIn_initialRange, keepInitialDistribution = keepInitialDistribution)
 
       # }else if(algorithmVersion==3.1){
       #
@@ -929,7 +933,7 @@ main_iteration_version1 <-  function(X_in, Y_in, lambdaV, minX, maxX, targetMatr
 }
 
 
-main_iteration_version3_fast <-  function(X_in, Y_in, lambdaV, minX, maxX, targetMatrix, algorithmParameter_gamma){
+main_iteration_version3_fast <-  function(X_in, Y_in, lambdaV, minX, maxX, targetMatrix, algorithmParameter_gamma, stayIn_initialRange=FALSE, keepInitialDistribution=NA){
 
   #// aliveIndex: index of the parameter set in the cluster whose SSR have decreased in the previous iteration.
   #// X_in: all set of parameters in the cluster from the previous itaration  X_in[i][j]: jth parameter value in the ith parameter set in the cluster
@@ -1060,6 +1064,9 @@ main_iteration_version3_fast <-  function(X_in, Y_in, lambdaV, minX, maxX, targe
 
       A=t(ATAinv%*%(AT%*%diag((rec_relative_distance[ ,k])^algorithmParameter_gamma)%*%(delta_Y)));
 
+      if(!is.na(keepInitialDistribution)&&length(keepInitialDistribution)==dim(X_in)[2]){
+        A[,keepInitialDistribution]=0
+      }
 
       #  for (i in seq(1,dim(Y_in)[2])){
       #    A[i,] <- CGNR_ATAx_ATb_with_weight(deltaX,Y_in[ ,i]-Y_in[k,i]*tempOnes,rec_relative_distance[ ,k]^algorithmParameter_gamma)
@@ -1068,6 +1075,10 @@ main_iteration_version3_fast <-  function(X_in, Y_in, lambdaV, minX, maxX, targe
 
       ## 2-2): Solve for x that minimizes the resodual using the weighted linear approximation
       delta_X[k,] <- CGNR_ATAx_ATb_with_reg(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k])
+
+     if(stayIn_initialRange){
+       delta_X[k,]=delta_X[k,]/(max(c(1, max((delta_X[k,])/(X_in[k,] - minX)), max((delta_X[k,])/(maxX-X_in[k,])))))
+     }
     }
 
   }
@@ -1313,7 +1324,13 @@ if(is.na(indicesToUseAsInitialIterates[1])){
 
   bootstrapInitialMatrix=CGNM_result$X[sample(acceptParaIndex,num_bootstrapSample,replace=TRUE),]
 
-  CGNM_bootstrap_result=Cluster_Gauss_Newton_method(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind, num_iteration, saveLog, paste0(runName,"bootstrap"), textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, targetMatrix = bootstrapTargetMatrix)
+  stayIn_initRange=FALSE
+
+  if(!is.null(CGNM_result$runSetting$stayIn_initialRange)){
+    stayIn_initRange=CGNM_result$runSetting$stayIn_initialRange
+  }
+
+  CGNM_bootstrap_result=Cluster_Gauss_Newton_method(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , stayIn_initialRange = stayIn_initRange, num_minimizersToFind, num_iteration, saveLog, paste0(runName,"bootstrap"), textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, targetMatrix = bootstrapTargetMatrix)
 
   CGNM_result$bootstrapX=CGNM_bootstrap_result$X
   CGNM_result$bootstrapY=CGNM_bootstrap_result$Y

@@ -9,6 +9,7 @@ Cluster_Gauss_Newton_method(
   targetVector,
   initial_lowerRange,
   initial_upperRange,
+  stayIn_initialRange = FALSE,
   num_minimizersToFind = 250,
   num_iteration = 25,
   saveLog = FALSE,
@@ -18,7 +19,8 @@ Cluster_Gauss_Newton_method(
   algorithmParameter_gamma = 2,
   algorithmVersion = 3,
   initialIterateMatrix = NA,
-  targetMatrix = NA
+  targetMatrix = NA,
+  keepInitialDistribution = NA
 )
 }
 \arguments{
@@ -29,6 +31,8 @@ Cluster_Gauss_Newton_method(
 \item{initial_lowerRange}{(required input) \emph{A vector of real number of length n} where each element represents  \strong{the lower range of the initial iterate}. Similarly to regular Gauss-Newton method, CGNM iteratively reduce the residual to find minimizers.  Essential differences is that CGNM start from the initial RANGE and not an initial point. Note that CGNM is an unconstraint optimization method so the final minimizer can be anywhere (and outside of this specified range).  In the parameter estimation problem, there often is a constraints to the parameters (e.g., parameters cannot be negative).. If you wish to constraint the parameter domain do so via parameter transformation (e.g., if parameter needs to be positive do log transform, if there is upper and lower bounds consider using logit transform.)}
 
 \item{initial_upperRange}{(required input) \emph{A vector of real number of length n} where each element represents  \strong{the upper range of the initial iterate}.}
+
+\item{stayIn_initialRange}{(default: FALSE) \emph{TRUE or FALSE} if set TRUE, the parameter search will conducted strictly within the range specified by initial_lowerRange and initial_upperRange.}
 
 \item{num_minimizersToFind}{(default: 250) \emph{A positive integer} defining number of approximate minimizers CGNM will find. We usually \strong{use 250 when testing the model and 1000 for the final analysis}.  The computational cost increase proportionally to this number; however, larger number algorithm becomes more stable and increase the chance of finding more better minimizers. See Appendix C of our paper for detail.}
 
@@ -49,6 +53,8 @@ Cluster_Gauss_Newton_method(
 \item{initialIterateMatrix}{(default: NA) \emph{A matrix} with dimension num_minimizersToFind x n.  User can provide initial iterate as a matrix  This input is used when the user wishes not to generate initial iterate randomly from the initial range.  The user is responsible for ensuring all function evaluation at each initial iterate does not produce NaN.}
 
 \item{targetMatrix}{(default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple target vectors in the matrix form.  This input is mainly used when running bootstrap method and not intended to be used for other purposes.}
+
+\item{keepInitialDistribution}{(default: NA) \emph{A vector of TRUE or FALSE} of length n User can specify if the initial distribution of one of the input variable (e.g. parameter) to be kept as the initial iterate throughout CGNM iterations.}
 }
 \value{
 list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
