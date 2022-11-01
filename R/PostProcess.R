@@ -439,16 +439,20 @@ plot_Rank_SSR=function(CGNM_result, indicesToInclude=NA){
   SSR_vec=CGNM_result$residual_history[,dim(CGNM_result$residual_history)[2]]
 
   if(!is.na(indicesToInclude[1])){
-    acceptedIndices_b=seq(1,dim(CGNM_result$X)[1])%in%indicesToInclude
+    if(sum(indicesToInclude)<=dim(CGNM_result$X)[1]&length(indicesToInclude)==dim(CGNM_result$X)[1]){
+      acceptedIndices_b=indicesToInclude
+    }else{
+      acceptedIndices_b=seq(1,dim(CGNM_result$X)[1]) %in% indicesToInclude
+    }
   }else{
     acceptedIndices_b=acceptedIndices_binary(CGNM_result,cutoff_pvalue, numParametersIncluded, useAcceptedApproximateMinimizers)
   }
 
   numAccept=sum(acceptedIndices_b)
-  acceptMaxSSR=acceptedMaxSSR(CGNM_result,cutoff_pvalue, numParametersIncluded, useAcceptedApproximateMinimizers)
+  acceptMaxSSR=max(SSR_vec[acceptedIndices_b])#acceptedMaxSSR(CGNM_result,cutoff_pvalue, numParametersIncluded, useAcceptedApproximateMinimizers)
   min_R=min(SSR_vec)
 
-  plot_df=data.frame(SSR_value=SSR_vec, rank=rank(SSR_vec), is_accepted=acceptedIndices_b)
+  plot_df=data.frame(SSR_value=SSR_vec, rank=rank(SSR_vec, na.last=TRUE, ties.method = "last"), is_accepted=acceptedIndices_b)
 
   ggplot2::ggplot(plot_df, ggplot2::aes(x=rank,y=SSR_value, colour=is_accepted))+ggplot2::geom_point()+ggplot2::coord_cartesian(ylim=c(0,acceptMaxSSR*2))+ggplot2::geom_vline(xintercept = numAccept, color="grey")+ ggplot2::annotate(geom="text", x=numAccept, y=acceptMaxSSR*0.5, label=paste("Accepted: ",numAccept,"\n Accepted max SSR: ",formatC(acceptMaxSSR, format = "g", digits = 3)),angle = 90,
                                                                                                                                                                        color="black")+ ggplot2::annotate(geom="text", x=length(SSR_vec)*0.1, y=min_R*1.1, label=paste("min SSR: ",formatC(min_R, format = "g", digits = 3)),
@@ -671,153 +675,180 @@ plot_profileLikelihood=function(logLocation, numBins=NA,  ParameterNames=NA, Rep
 #' @import ggplot2
 plot_SSRsurface=function(logLocation, profile_likelihood=FALSE, numBins=NA, maxSSR=NA, ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE){
 
-  CGNM_result=NULL
+  boundValue=NULL
+  individual=NULL
+  label=NULL
   minSSR=NULL
   negative2LogLikelihood=NULL
+  newvalue=NULL
+
+
+  reparaXinit=NULL
   value=NULL
-  boundValue=NULL
-
-
-  if(typeof(logLocation)=="character"){
-    DirectoryName_vec=c(logLocation)
-
-  }else if(typeof(logLocation)=="list"){
-      if(logLocation$runSetting$runName==""){
-        DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
-      }else{
-        DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
-      }
-
-
-
-  }else{
-    warning("DirectoryName need to be either the CGNM_result object or a string")
-  }
-
-
-  load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
-
-
-  if(is.na(ParameterNames[1])|length(ParameterNames)!=length(ReparameterizationDef)){
-    ParameterNames=ReparameterizationDef
-  }
-
-  if(is.na(ParameterNames[1])){
-    ParameterNames=paste0("x",seq(1,dim(CGNM_result$initialX)[2]))
-    ReparameterizationDef=ParameterNames
-  }
-
-
-
-
-  if(is.na(numBins)){
-    numBins=round(CGNM_result$runSetting$num_minimizersToFind/10)
-  }
-
-
-  rawX_nu=CGNM_result$initialX
-  R_nu=CGNM_result$residual_history[,1]
-
-  initiLNLfunc=CGNM_result$runSetting$nonlinearFunction
-
-  residual_variance_vec=c()
-
-  for(DirectoryName in DirectoryName_vec){
-
-    checkNL=TRUE
-    for(i in seq(1,CGNM_result$runSetting$num_iteration)){
-      fileName=paste0(DirectoryName,"/iteration_",i,".RDATA")
-      if (file.exists(fileName)){
-        load(fileName)
-        if(identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
-          rawX_nu=rbind(rawX_nu,CGNM_result$X)
-          R_nu=c(R_nu, CGNM_result$residual_history[,dim(CGNM_result$residual_history)[2]])
-          if(checkNL){
-            print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
-            checkNL=FALSE
-          }
-        }else if(checkNL){
-          print(paste0("log saved in ",getwd(),"/",DirectoryName," will NOT be used as the nonlinear function used in this log is not the same as ",getwd(),"/",DirectoryName[1]))
-          checkNL=FALSE
-        }
-      }
-    }
-
-    residual_variance_vec=c(residual_variance_vec, min(CGNM_result$residual_history,na.rm = TRUE)/sum(!is.na(CGNM_result$runSetting$targetVector)))
-
-  }
-
-  residual_variance=min(residual_variance_vec)
-
-  rawXinit=CGNM_result$initialX
-  reparaXinit=data.frame(row.names = seq(1,dim(rawXinit)[1]))
-
-  colnames(rawXinit)=paste0("x",seq(1,dim(rawXinit)[2]))
-  rawXinit=data.frame(rawXinit)
-
-  for(i in seq(1,length(ParameterNames))){
-    reparaXinit[,ParameterNames[i]]=with(rawXinit, eval(parse(text=ReparameterizationDef[i])))
-  }
-
 
 #
-#   for(i in seq(1,CGNM_result$runSetting$num_iteration)){
-#     fileName=paste0(DirectoryName,"bootstrap/iteration_",i,".RDATA")
+#   CGNM_result=NULL
+#   minSSR=NULL
+#   negative2LogLikelihood=NULL
+#   value=NULL
+#   boundValue=NULL
 #
 #
-#     if (file.exists(fileName)){
-#       load(fileName)
-#       rawX_nu=rbind(rawX_nu,CGNM_result$X)
+#   if(typeof(logLocation)=="character"){
+#     DirectoryName_vec=c(logLocation)
 #
-#       R_temp=c()
-#       for(j in seq(1, dim(CGNM_result$Y)[1])){
-#         R_temp=c(R_temp,sum((CGNM_result$Y[j,]-CGNM_result$runSetting$targetVector)^2,na.rm = TRUE))
+#   }else if(typeof(logLocation)=="list"){
+#       if(logLocation$runSetting$runName==""){
+#         DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
+#       }else{
+#         DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
 #       }
 #
-#       R_nu=c(R_nu, R_temp)
+#
+#
+#   }else{
+#     warning("DirectoryName need to be either the CGNM_result object or a string")
+#   }
+#
+#
+#   load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
+#
+#
+#   if(is.na(ParameterNames[1])|length(ParameterNames)!=length(ReparameterizationDef)){
+#     ParameterNames=ReparameterizationDef
+#   }
+#
+#   if(is.na(ParameterNames[1])){
+#     ParameterNames=paste0("x",seq(1,dim(CGNM_result$initialX)[2]))
+#     ReparameterizationDef=ParameterNames
+#   }
+#
+#
+#
+#
+#   if(is.na(numBins)){
+#     numBins=round(CGNM_result$runSetting$num_minimizersToFind/10)
+#   }
+#
+#
+#   rawX_nu=CGNM_result$initialX
+#   R_nu=CGNM_result$residual_history[,1]
+#
+#   initiLNLfunc=CGNM_result$runSetting$nonlinearFunction
+#   rawXinit=CGNM_result$initialX
+#
+#   residual_variance_vec=c()
+#
+#   for(DirectoryName in DirectoryName_vec){
+#
+#     checkNL=TRUE
+#     for(i in seq(1,CGNM_result$runSetting$num_iteration)){
+#       fileName=paste0(DirectoryName,"/iteration_",i,".RDATA")
+#       if (file.exists(fileName)){
+#         load(fileName)
+#           rawX_nu=rbind(rawX_nu,CGNM_result$X)
+#           tempR=matlabSum((CGNM_result$Y[,!is.na(CGNM_result$runSetting$targetVector)]-repmat(matrix(CGNM_result$runSetting$targetVector[!is.na(CGNM_result$runSetting$targetVector)],nrow=1), dim(CGNM_result$Y)[1],1))^2,2)
+#           R_nu=c(R_nu, tempR)
+#
+#           if(checkNL){
+#             print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
+#             if(!identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
+#              warning(paste0("the nonlinear function used in this log in ",getwd(),"/",DirectoryName," is not the same as ",getwd(),"/",DirectoryName_vec[1]))
+#             }
+#             checkNL=FALSE
+#           }
+#
+#       }
+#     }
+#
+#     residual_variance_vec=c(residual_variance_vec, min(R_nu,na.rm = TRUE)/sum(!is.na(CGNM_result$runSetting$targetVector)))
+#
+#   }
+#
+#   residual_variance=min(residual_variance_vec)
+#
+#   reparaXinit=data.frame(row.names = seq(1,dim(rawXinit)[1]))
+#
+#   colnames(rawXinit)=paste0("x",seq(1,dim(rawXinit)[2]))
+#   rawXinit=data.frame(rawXinit)
+#
+#   for(i in seq(1,length(ParameterNames))){
+#     reparaXinit[,ParameterNames[i]]=with(rawXinit, eval(parse(text=ReparameterizationDef[i])))
+#   }
+#
+#
+# #
+# #   for(i in seq(1,CGNM_result$runSetting$num_iteration)){
+# #     fileName=paste0(DirectoryName,"bootstrap/iteration_",i,".RDATA")
+# #
+# #
+# #     if (file.exists(fileName)){
+# #       load(fileName)
+# #       rawX_nu=rbind(rawX_nu,CGNM_result$X)
+# #
+# #       R_temp=c()
+# #       for(j in seq(1, dim(CGNM_result$Y)[1])){
+# #         R_temp=c(R_temp,sum((CGNM_result$Y[j,]-CGNM_result$runSetting$targetVector)^2,na.rm = TRUE))
+# #       }
+# #
+# #       R_nu=c(R_nu, R_temp)
+# #     }
+# #   }
+#
+#
+#
+#   tempMatrix=unique(cbind(rawX_nu,R_nu))
+#   rawX_nu=tempMatrix[,seq(1,dim(rawX_nu)[2])]
+#   R_nu=tempMatrix[,dim(tempMatrix)[2]]
+#
+#   colnames(rawX_nu)=paste0("x",seq(1,dim(rawX_nu)[2]))
+#   rawX_nu=data.frame(rawX_nu)
+#
+#   X_nu=data.frame(row.names = seq(1,dim(rawX_nu)[1]))
+#   for(i in seq(1,length(ParameterNames))){
+#     X_nu[,ParameterNames[i]]=with(rawX_nu, eval(parse(text=ReparameterizationDef[i])))
+#   }
+#
+#
+#   likelihoodSurfacePlot_df=data.frame()
+#
+#   for(j in seq(1,length(ParameterNames))){
+#     for(i in seq(1,numBins)){
+#       binUpper=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[2]
+#       binLower=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[1]
+#       indexToUse=((X_nu[,j]<=binUpper)&(X_nu[,j]>binLower))
+#
+#
+#       likelihoodSurfacePlot_df=rbind(likelihoodSurfacePlot_df, data.frame(value=X_nu[which(indexToUse&R_nu==min(R_nu[indexToUse],na.rm = TRUE)),j], minSSR=min(R_nu[indexToUse],na.rm = TRUE), parameterName=ParameterNames[j]))
+#
 #     }
 #   }
+#
+# #  ggplot(likelihoodSurfacePlot_df, aes(x=value,y=minSSR))+geom_point()+facet_wrap(.~parameterName,scales = "free")+geom_smooth()+ylim(0.5,1)
+#
+#   if(!is.na(maxSSR)){
+#     likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, minSSR<=maxSSR)
+#   }
+#
+#
+#
+#   likelihoodSurfacePlot_df$negative2LogLikelihood=likelihoodSurfacePlot_df$minSSR/residual_variance
 
 
+  data=makeSSRsurfaceDataset(logLocation, profile_likelihood, numBins, maxSSR, ParameterNames, ReparameterizationDef, showInitialRange)
 
-  tempMatrix=unique(cbind(rawX_nu,R_nu))
-  rawX_nu=tempMatrix[,seq(1,dim(rawX_nu)[2])]
-  R_nu=tempMatrix[,dim(tempMatrix)[2]]
+  likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
+  residual_variance=data$residual_variance
+  reparaXinit=data$initialX
+  ParameterNames=data$ParameterNames
 
-  colnames(rawX_nu)=paste0("x",seq(1,dim(rawX_nu)[2]))
-  rawX_nu=data.frame(rawX_nu)
-
-  X_nu=data.frame(row.names = seq(1,dim(rawX_nu)[1]))
-  for(i in seq(1,length(ParameterNames))){
-    X_nu[,ParameterNames[i]]=with(rawX_nu, eval(parse(text=ReparameterizationDef[i])))
-  }
-
-
-  likelihoodSurfacePlot_df=data.frame()
-
-  for(j in seq(1,length(ParameterNames))){
-    for(i in seq(1,numBins)){
-      binUpper=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[2]
-      binLower=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[1]
-      indexToUse=((X_nu[,j]<=binUpper)&(X_nu[,j]>binLower))
-      likelihoodSurfacePlot_df=rbind(likelihoodSurfacePlot_df, data.frame(value=X_nu[which(R_nu==min(R_nu[indexToUse],na.rm = TRUE)),j], minSSR=min(R_nu[indexToUse]), parameterName=ParameterNames[j]))
-
-    }
-  }
-
-#  ggplot(likelihoodSurfacePlot_df, aes(x=value,y=minSSR))+geom_point()+facet_wrap(.~parameterName,scales = "free")+geom_smooth()+ylim(0.5,1)
-
-  if(!is.na(maxSSR)){
-    likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, minSSR<=maxSSR)
-  }
-
-  likelihoodSurfacePlot_df$negative2LogLikelihood=likelihoodSurfacePlot_df$minSSR/residual_variance
 
 
   if(profile_likelihood){
-    likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, negative2LogLikelihood<=(2*(3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood))))
+#    likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, negative2LogLikelihood<=(2*(3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood))))
 
-    g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=negative2LogLikelihood))+ggplot2::geom_point()+ggplot2::geom_line()
+    g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=negative2LogLikelihood))+ggplot2::geom_point()+ggplot2::geom_line()+
+      coord_cartesian(ylim=c(-3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood), ((4*3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood)))))
 
   }else{
     g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=minSSR))+ggplot2::geom_point()+ggplot2::geom_line()
@@ -827,10 +858,10 @@ plot_SSRsurface=function(logLocation, profile_likelihood=FALSE, numBins=NA, maxS
 #  g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=minSSR))+ggplot2::geom_point()+ggplot2::geom_line()
 
 
-
   if(showInitialRange){
     Xinit_min=c()
     Xinit_max=c()
+
     for(i in seq(1,dim(reparaXinit)[2])){
       Xinit_min=c(Xinit_min,min(reparaXinit[,i]))
       Xinit_max=c(Xinit_max,max(reparaXinit[,i]))
@@ -850,6 +881,441 @@ plot_SSRsurface=function(logLocation, profile_likelihood=FALSE, numBins=NA, maxS
   }
 
   return(g)
+}
+
+
+prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDef=NA,numBins=NA){
+
+  CGNM_result=NULL
+  minSSR=NULL
+  negative2LogLikelihood=NULL
+  value=NULL
+  boundValue=NULL
+
+
+  if(typeof(logLocation)=="character"){
+    DirectoryName_vec=c(logLocation)
+
+  }else if(typeof(logLocation)=="list"){
+    if(logLocation$runSetting$runName==""){
+      DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
+    }else{
+      DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
+    }
+
+
+
+  }else{
+    warning("DirectoryName need to be either the CGNM_result object or a string")
+  }
+
+
+  load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
+
+
+  if(is.na(ParameterNames[1])|length(ParameterNames)!=length(ReparameterizationDef)){
+    ParameterNames=ReparameterizationDef
+  }
+
+  initialX=CGNM_result$initialX
+
+  if(is.na(numBins)){
+    numBins=round(CGNM_result$runSetting$num_minimizersToFind/10)
+  }
+
+  if(is.na(ParameterNames[1])){
+    ParameterNames=paste0("x",seq(1,dim(CGNM_result$initialX)[2]))
+    ReparameterizationDef=ParameterNames
+  }
+
+
+
+
+  rawX_nu=CGNM_result$initialX
+  R_nu=CGNM_result$residual_history[,1]
+
+  initiLNLfunc=CGNM_result$runSetting$nonlinearFunction
+  rawXinit=CGNM_result$initialX
+
+  residual_variance_vec=c()
+
+  for(DirectoryName in DirectoryName_vec){
+
+    checkNL=TRUE
+    for(i in seq(1,CGNM_result$runSetting$num_iteration)){
+      fileName=paste0(DirectoryName,"/iteration_",i,".RDATA")
+      if (file.exists(fileName)){
+        load(fileName)
+        rawX_nu=rbind(rawX_nu,CGNM_result$X)
+        tempR=matlabSum((CGNM_result$Y[,!is.na(CGNM_result$runSetting$targetVector)]-repmat(matrix(CGNM_result$runSetting$targetVector[!is.na(CGNM_result$runSetting$targetVector)],nrow=1), dim(CGNM_result$Y)[1],1))^2,2)
+        R_nu=c(R_nu, tempR)
+
+        if(checkNL){
+          print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
+          if(!identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
+            warning(paste0("the nonlinear function used in this log in ",getwd(),"/",DirectoryName," is not the same as ",getwd(),"/",DirectoryName_vec[1]))
+          }
+          checkNL=FALSE
+        }
+
+      }
+    }
+
+    residual_variance_vec=c(residual_variance_vec, min(R_nu,na.rm = TRUE)/sum(!is.na(CGNM_result$runSetting$targetVector)))
+
+  }
+  residual_variance=min(residual_variance_vec, na.rm = TRUE)
+
+  reparaXinit=data.frame(row.names = seq(1,dim(rawXinit)[1]))
+
+  colnames(rawXinit)=paste0("x",seq(1,dim(rawXinit)[2]))
+  rawXinit=data.frame(rawXinit)
+
+  for(i in seq(1,length(ParameterNames))){
+    reparaXinit[,ParameterNames[i]]=with(rawXinit, eval(parse(text=ReparameterizationDef[i])))
+  }
+
+
+  #
+  #   for(i in seq(1,CGNM_result$runSetting$num_iteration)){
+  #     fileName=paste0(DirectoryName,"bootstrap/iteration_",i,".RDATA")
+  #
+  #
+  #     if (file.exists(fileName)){
+  #       load(fileName)
+  #       rawX_nu=rbind(rawX_nu,CGNM_result$X)
+  #
+  #       R_temp=c()
+  #       for(j in seq(1, dim(CGNM_result$Y)[1])){
+  #         R_temp=c(R_temp,sum((CGNM_result$Y[j,]-CGNM_result$runSetting$targetVector)^2,na.rm = TRUE))
+  #       }
+  #
+  #       R_nu=c(R_nu, R_temp)
+  #     }
+  #   }
+
+
+
+  tempMatrix=unique(cbind(rawX_nu,R_nu))
+  rawX_nu=tempMatrix[,seq(1,dim(rawX_nu)[2])]
+  R_nu=tempMatrix[,dim(tempMatrix)[2]]
+
+  colnames(rawX_nu)=paste0("x",seq(1,dim(rawX_nu)[2]))
+  rawX_nu=data.frame(rawX_nu)
+
+  X_nu=data.frame(row.names = seq(1,dim(rawX_nu)[1]))
+  for(i in seq(1,length(ParameterNames))){
+    X_nu[,ParameterNames[i]]=with(rawX_nu, eval(parse(text=ReparameterizationDef[i])))
+  }
+
+  out=list(X_matrix=X_nu, R_matrix=R_nu, residual_variance=residual_variance,ParameterNames=ParameterNames,numBins=numBins, initialX=reparaXinit, ParameterNames=ParameterNames)
+
+  return(out)
+}
+
+#' @title plot_2DprofileLikelihood
+#' @description
+#' Make likelihood related values v.s. parameterValues plot using the function evaluations used during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().
+#' @param logLocation (required input) \emph{A string or a list of strings} of folder directory where CGNM computation log files exist.
+#' @param index_x (default: NA) \emph{A vector of strings or numbers} List parameter names or indices used for the surface plot. (if NA all parameters are used)
+#' @param index_y (default: NA) \emph{A vector of strings or numbers} List parameter names or indices used for the surface plot. (if NA all parameters are used)
+#' @param plotType (default: 1) \emph{A number} 0: number of model evaluations done, 1: (1-alpha) where alpha is the significance level, this plot is recommended for the ease of visualization as it ranges from 0 to 1. 2: -2log likelihood. 3: SSR.  (For -2loglikelihood and SSR most likely that one would need to use plotMax function to restrict the range of values that is plotted.)
+#' @param plotMax (default: NA) \emph{A number} the maximum value that will be plotted on surface plot. (If NA all values are included in the plot, note SSR or likelihood can range many orders of magnitudes fo may want to restrict when plotting them)
+#' @param numBins (default: NA) \emph{A positive integer} 2D profile likelihood surface is plotted by finding the minimum SSR given two of the parameters are fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
+#' @param ParameterNames (default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x1, x2, ...)
+#' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax and also refer to the ith element of the x vector (the input variable to the nonlinear function) as xi (e.g., if the first input variable to the nonlinear function is defined as x1=log10(Ka), then by setting "10^x1" as one of the strings in this vector, you can plot the violin plot of Ka)
+#' @param showInitialRange (default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
+#' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+#' @examples
+#'\dontrun{
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=10^x[1]
+#'  V1=10^x[2]
+#'  CL_2=10^x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  log10(Cp)
+#'}
+#'
+#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation,
+#' initial_lowerRange = c(-1,-1,-1), initial_upperRange =  c(1,1,1),
+#' num_iter = 10, num_minimizersToFind = 500, saveLog=TRUE)
+#'
+#' ## the minimum example
+#' plot_2DprofileLikelihood("CGNM_log")
+#'
+#' ## we can draw profilelikelihood also including bootstrap result
+#'CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,
+#'                       nonlinearFunction = model_analytic_function)
+#'
+#' ## example with various options
+#' plot_2DprofileLikelihood(c("CGNM_log","CGNM_log_bootstrap"),
+#'  ParameterNames=c("ka", "V1", "CL_2"),
+#'  ReparameterizationDef=c("10^x1", "10^x2", "10^x3"),
+#'  showInitialRange = TRUE,index_x = c("ka","V1"))
+#'  }
+#' @export
+#' @import ggplot2
+plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=1,plotMax=NA, ParameterNames=NA, ReparameterizationDef=NA,numBins=NA, showInitialRange=FALSE){
+
+  x_axis=NULL
+  y_axis=NULL
+  value=NULL
+  x_min=NULL
+  x_max=NULL
+  y_min=NULL
+  y_max=NULL
+
+  if(plotType==1|plotType=="1-alpha"){
+    plotType="1-alpha"
+  }else if(plotType==2|plotType=="-2likelihood"){
+    plotType="-2likelihood"
+  }else if(plotType==3|plotType=="SSR"){
+    plotType="SSR"
+  }else if(plotType=="count"|plotType==0){
+    plotType="count"
+  }
+
+  preppedDataset_list=prepSSRsurfaceData(logLocation, ParameterNames, ReparameterizationDef,numBins)
+
+  Xinit_min=c()
+  Xinit_max=c()
+  for(i in seq(1,dim(preppedDataset_list$initialX)[2])){
+    Xinit_min=c(Xinit_min,min(preppedDataset_list$initialX[,i]))
+    Xinit_max=c(Xinit_max,max(preppedDataset_list$initialX[,i]))
+  }
+
+  index_x_vec=c()
+
+  if(is.na(index_x)){
+    index_x_vec=seq(1,length(preppedDataset_list$ParameterNames))
+  }else if(is.numeric(index_x)){
+    index_x_vec=index_x
+  }else{
+    for(index_nu in index_x){
+      index_x_vec=c(index_x_vec, which(preppedDataset_list$ParameterNames==index_nu))
+    }
+  }
+
+  index_y_vec=c()
+  if(is.na(index_y)){
+    index_y_vec=seq(1,length(preppedDataset_list$ParameterNames))
+  }else if(is.numeric(index_y)){
+    index_y_vec=index_y
+  }else{
+    for(index_nu in index_y){
+      index_y_vec=c(index_y_vec, which(preppedDataset_list$ParameterNames==index_nu))
+    }
+  }
+
+  X_val=preppedDataset_list$X_matrix
+  numBins=preppedDataset_list$numBins
+
+  SSR_vec=preppedDataset_list$R_matrix
+  neg2likelihood_vec=SSR_vec/min(preppedDataset_list$residual_variance)
+
+
+  if(plotType=="1-alpha"){
+    z_value=pchisq(neg2likelihood_vec-min(neg2likelihood_vec),df=2)
+  }else if(plotType=="-2likelihood"){
+    z_value=neg2likelihood_vec
+  }else if(plotType=="SSR"){
+    z_value=SSR_vec
+  }
+
+  if(!is.na(plotMax)){
+    X_val=X_val[z_value<plotMax,]
+    SSR_vec=SSR_vec[z_value<plotMax]
+  }
+
+  X_rounded=X_val
+
+
+  for(i in seq(1,dim(X_rounded)[2])){
+    X_rounded[,i]=(X_val[,i]-min(X_val[,i]))/(max(X_val[,i])-min(X_val[,i]))
+
+    X_rounded[,i]=round(X_rounded[,i]*numBins)/numBins
+
+    X_rounded[,i]=X_rounded[,i]*(max(X_val[,i])-min(X_val[,i]))+min(X_val[,i])
+  }
+  aggData_comnbined_df=data.frame()
+  boundData_df=data.frame()
+
+  for(index_x in index_x_vec){
+    for(index_y in index_y_vec){
+
+      boundData_df=rbind(boundData_df, data.frame(x_min=Xinit_min[index_x],x_max=Xinit_max[index_x],y_min=Xinit_min[index_y],y_max=Xinit_max[index_y],x_lab=preppedDataset_list$ParameterNames[index_x],y_lab=preppedDataset_list$ParameterNames[index_y]))
+      if(plotType=="count"){
+
+        aggData_df=data.frame(aggregate(SSR_vec, by=list(X_rounded[,index_x],X_rounded[,index_y]), FUN="length"))
+
+        names(aggData_df)=c("x_axis","y_axis", "value")
+
+      }else{
+
+        aggData_df=data.frame(aggregate(SSR_vec, by=list(X_rounded[,index_x],X_rounded[,index_y]), FUN="min"))
+
+        names(aggData_df)=c("x_axis","y_axis", "SSR")
+        aggData_df$neg2likelihood=aggData_df$SSR/min(preppedDataset_list$residual_variance)
+
+        if(plotType=="1-alpha"){
+          aggData_df$value=pchisq(aggData_df$neg2likelihood-min(aggData_df$neg2likelihood),df=2)
+        }else if(plotType=="-2likelihood"){
+          aggData_df$value=aggData_df$neg2likelihood
+        }else if(plotType=="SSR"){
+          aggData_df$value=aggData_df$SSR
+        }
+      }
+
+      aggData_df$x_lab=preppedDataset_list$ParameterNames[index_x]
+      aggData_df$y_lab=preppedDataset_list$ParameterNames[index_y]
+
+      aggData_comnbined_df=rbind(aggData_comnbined_df,aggData_df)
+
+    }
+  }
+
+
+  if(plotType=="count"){
+
+    g=ggplot2::ggplot(aggData_comnbined_df, ggplot2::aes(x=x_axis, y=y_axis, alpha=log10(value)))+ggplot2::geom_point()+ggplot2::xlab("")+ggplot2::ylab("")+ggplot2::labs(alpha="log10(count)")+ggplot2::facet_grid(y_lab~x_lab,scales = "free")
+
+  }else if(plotType=="1-alpha"){
+    g=ggplot2::ggplot(aggData_comnbined_df, ggplot2::aes(x=x_axis, y=y_axis, z=value))+ggplot2::xlab("")+ggplot2::ylab("")+ggplot2::labs(fill="1-alpha")+ggplot2::facet_grid(y_lab~x_lab,scales = "free")+ggplot2::geom_contour_filled(bins=20)
+
+  }else{
+    g=ggplot2::ggplot(aggData_comnbined_df, ggplot2::aes(x=x_axis, y=y_axis, colour=value))+ggplot2::xlab("")+ggplot2::ylab("")+ggplot2::labs(colour=plotType)+ggplot2::facet_grid(y_lab~x_lab,scales = "free")+ggplot2::geom_point()
+
+  }
+
+
+  if(showInitialRange){
+
+    g=g+ggplot2::geom_vline(data=boundData_df, ggplot2::aes(xintercept=x_min), colour="gray")
+    g=g+ggplot2::geom_vline(data=boundData_df, ggplot2::aes(xintercept=x_max), colour="gray")
+
+    g=g+ggplot2::geom_hline(data=boundData_df, ggplot2::aes(yintercept=y_min), colour="gray")
+    g=g+ggplot2::geom_hline(data=boundData_df, ggplot2::aes(yintercept=y_max), colour="gray")
+  }
+
+  return(g)
+}
+
+
+
+makeSSRsurfaceDataset=function(logLocation, profile_likelihood=FALSE, numBins=NA, maxSSR=NA, ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE){
+
+  CGNM_result=NULL
+  minSSR=NULL
+  negative2LogLikelihood=NULL
+  value=NULL
+  boundValue=NULL
+  initialX=NULL
+
+
+  temp_list=prepSSRsurfaceData(logLocation, ParameterNames, ReparameterizationDef, numBins)
+  X_nu=temp_list$X_matrix
+  R_nu=temp_list$R_matrix
+  residual_variance=temp_list$residual_variance
+  ParameterNames=temp_list$ParameterNames
+  numBins=temp_list$numBins
+  initialX=temp_list$initialX
+  ParameterNames=temp_list$ParameterNames
+
+
+
+
+  likelihoodSurfacePlot_df=data.frame()
+
+  indexToUseForRefine_df=data.frame()
+
+  for(j in seq(1,length(ParameterNames))){
+    for(i in seq(1,numBins)){
+      binUpper=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[2]
+      binLower=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[1]
+      indexToUse=((X_nu[,j]<=binUpper)&(X_nu[,j]>binLower))
+
+      R_toUse=R_nu[indexToUse]
+
+      plot_index=which(indexToUse&R_nu==min(R_toUse,na.rm = TRUE))
+
+      indexToUseForRefine_df=rbind(indexToUseForRefine_df,data.frame(index= which(indexToUse)[order(R_toUse)[seq(1, min(length(R_nu),length(ParameterNames)+1))]], paraIndex=j))
+
+      likelihoodSurfacePlot_df=rbind(likelihoodSurfacePlot_df, data.frame(value=X_nu[plot_index,j], minSSR=min(R_nu[indexToUse],na.rm = TRUE), parameterName=ParameterNames[j]))
+
+    }
+  }
+
+
+  #  ggplot(likelihoodSurfacePlot_df, aes(x=value,y=minSSR))+geom_point()+facet_wrap(.~parameterName,scales = "free")+geom_smooth()+ylim(0.5,1)
+
+  if(!is.na(maxSSR)){
+    likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, minSSR<=maxSSR)
+  }
+
+  likelihoodSurfacePlot_df$negative2LogLikelihood=likelihoodSurfacePlot_df$minSSR/residual_variance
+
+  out=list(likelihoodSurfacePlot_df=likelihoodSurfacePlot_df, residual_variance=residual_variance, indexToUseForRefine_df=indexToUseForRefine_df, X_nu=X_nu,initialX=initialX, ParameterNames=ParameterNames)
+
+  return(out)
+}
+
+
+
+
+makeInitialClusterForPLrefinment=function(logLocation, paraIndex, numPerBin=10, profile_likelihood=FALSE, numBins=NA, maxSSR=NA, ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE){
+
+  CGNM_result=NULL
+  minSSR=NULL
+  negative2LogLikelihood=NULL
+  value=NULL
+  boundValue=NULL
+  initialX=NULL
+
+
+  temp_list=prepSSRsurfaceData(logLocation, ParameterNames, ReparameterizationDef, numBins)
+  X_nu=temp_list$X_matrix
+  R_nu=temp_list$R_matrix
+  residual_variance=temp_list$residual_variance
+  ParameterNames=temp_list$ParameterNames
+  numBins=temp_list$numBins
+  initialX=temp_list$initialX
+
+
+
+
+  likelihoodSurfacePlot_df=data.frame()
+
+  indexToUseForRefine_df=data.frame()
+
+  j=paraIndex
+
+  out_df=data.frame()
+    for(i in seq(1,numBins)){
+      binUpper=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[2]
+      binLower=quantile(X_nu[,j], probs = c((i-1)*(1/numBins),(i)*(1/numBins)))[1]
+      indexToUse=((X_nu[,j]<=binUpper)&(X_nu[,j]>binLower))
+
+      R_toUse=R_nu[indexToUse]
+
+      plot_index=which(indexToUse&R_nu<=sort(R_toUse, na.last= TRUE)[numPerBin])
+
+      out_df=rbind(out_df, X_nu[plot_index,])
+
+    }
+
+  return(out_df)
 }
 
 #' @title plot_SSR_parameterValue
@@ -1064,6 +1530,7 @@ bestApproximateMinimizers=function(CGNM_result, numParameterSet=1){
 #' @param plotRank (default: c(1)) \emph{an integer of a vector of integers}\cr Specify which rank of the parameter to use for the goodness of fit plots. (e.g., if one wishes to use rank 1 to 100 then set it to be seq(1,100), or if one wish to use 88th rank parameters then set this as 88.)
 #' @param independentVariableVector (default: NA) \emph{a vector of numerics of length m} \cr set independent variables that target values are associated with (e.g., time of the drug concentration measurement one is fitting PBPK model to) \cr(when this variable is set to NA, seq(1,m) will be used as independent variable when appropriate).
 #' @param dependentVariableTypeVector (default: NA) \emph{a vector of text of length m} \cr when this variable is set (i.e., not NA) then the goodness of fit analyses is done for each variable type.  For example, if we are fitting the PBPK model to data with multiple dose arms, one can see the goodness of fit for each dose arm by specifying which dose group the observations are from.
+#' @param absResidual (default: FALSE)  \emph{TRUE or FALSE} If TRUE plot absolute values of the residual.
 #' @return \emph{A ggplot object} of the goodness of fit plot.
 #' @examples
 #'
@@ -1098,7 +1565,9 @@ bestApproximateMinimizers=function(CGNM_result, numParameterSet=1){
 #' @export
 #' @import ggplot2
 
-plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentVariableVector=NA, dependentVariableTypeVector=NA){
+plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentVariableVector=NA, dependentVariableTypeVector=NA, absResidual=FALSE){
+
+  CGNM_result$runSetting$targetVector=as.numeric(CGNM_result$runSetting$targetVector)
 
   independent_variable=NULL
   lower=NULL
@@ -1113,7 +1582,7 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
   independentVariableVector_in=independentVariableVector
 
   SSR_vec=CGNM_result$residual_history[,dim(CGNM_result$residual_history)[2]]
-  indexToInclude=seq(1,length(SSR_vec))[rank(SSR_vec,na.last = TRUE)%in%plotRank]
+  indexToInclude=seq(1,length(SSR_vec))[rank(SSR_vec,na.last = TRUE, ties.method = "last")%in%plotRank]
 
   if(is.na(independentVariableVector[1])||length(independentVariableVector)!=length(CGNM_result$runSetting$targetVector)){
     independentVariableVector=seq(1, length(CGNM_result$runSetting$targetVector))
@@ -1140,6 +1609,10 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
   }
   residualPlot_df$ind=as.factor(residualPlot_df$ind)
 
+
+  if(absResidual){
+    residualPlot_df$residual=abs(residualPlot_df$residual)
+  }
 
   withBootstrap=!is.null(CGNM_result$bootstrapY)
 
@@ -1192,8 +1665,7 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
 
     if(is.na(independentVariableVector_in[1])){
       p<-ggplot2::ggplot(residualPlot_df,ggplot2::aes(x=residual))+ggplot2::geom_histogram()
-      p=p+ggplot2::xlab("Independent Variable")
-      p=p+ggplot2::ylab("Residual")
+      p=p+ggplot2::xlab("Residual")
 
       if(!is.na(dependentVariableTypeVector[1])){
         p=p+ggplot2::facet_grid(.~dependent_variable_type, scales = "free")
@@ -1296,7 +1768,7 @@ table_parameterSummary=function(CGNM_result, indicesToInclude=NA, ParameterNames
 
     if(!is.null(CGNM_result$bootstrapX)){
       bootstrapDS=subset(freeParaValues, Name==vName&Kind_iter=="Bootstrap")$X_value
-      tempVec=c(tempVec, sd(bootstrapDS,na.rm = TRUE)/mean(bootstrapDS,na.rm = TRUE)*100)
+      tempVec=c(tempVec, sd(bootstrapDS,na.rm = TRUE)/abs(mean(bootstrapDS,na.rm = TRUE))*100)
     }
 
     summaryData_df=rbind(summaryData_df,as.numeric(tempVec))

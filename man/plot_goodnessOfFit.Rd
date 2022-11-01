@@ -9,7 +9,8 @@ plot_goodnessOfFit(
   plotType = 1,
   plotRank = c(1),
   independentVariableVector = NA,
-  dependentVariableTypeVector = NA
+  dependentVariableTypeVector = NA,
+  absResidual = FALSE
 )
 }
 \arguments{
@@ -24,6 +25,8 @@ plot_goodnessOfFit(
 \item{independentVariableVector}{(default: NA) \emph{a vector of numerics of length m} \cr set independent variables that target values are associated with (e.g., time of the drug concentration measurement one is fitting PBPK model to) \cr(when this variable is set to NA, seq(1,m) will be used as independent variable when appropriate).}
 
 \item{dependentVariableTypeVector}{(default: NA) \emph{a vector of text of length m} \cr when this variable is set (i.e., not NA) then the goodness of fit analyses is done for each variable type.  For example, if we are fitting the PBPK model to data with multiple dose arms, one can see the goodness of fit for each dose arm by specifying which dose group the observations are from.}
+
+\item{absResidual}{(default: FALSE)  \emph{TRUE or FALSE} If TRUE plot absolute values of the residual.}
 }
 \value{
 \emph{A ggplot object} of the goodness of fit plot.

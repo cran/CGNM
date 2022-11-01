@@ -34,7 +34,7 @@ col_normalize=function(data_in){
 col_sd=function(data_in){
   out=c()
   for(i in seq(1,dim(data_in)[2])){
-    out=c(out,sd(data_in[,i]))
+    out=c(out,sd(data_in[,i],na.rm = TRUE))
   }
   return(out)
 }
@@ -42,7 +42,7 @@ col_sd=function(data_in){
 col_max=function(data_in){
   out=c()
   for(i in seq(1,dim(data_in)[2])){
-    out=c(out,max(data_in[,i]))
+    out=c(out,max(data_in[,i],na.rm = TRUE))
   }
   return(out)
 }
@@ -50,7 +50,7 @@ col_max=function(data_in){
 col_min=function(data_in){
   out=c()
   for(i in seq(1,dim(data_in)[2])){
-    out=c(out,min(data_in[,i]))
+    out=c(out,min(data_in[,i],na.rm = TRUE))
   }
   return(out)
 }
@@ -58,10 +58,28 @@ col_min=function(data_in){
 col_mean=function(data_in){
   out=c()
   for(i in seq(1,dim(data_in)[2])){
-    out=c(out,mean(data_in[,i]))
+    out=c(out,mean(data_in[,i],na.rm = TRUE))
   }
   return(out)
 }
+
+col_median=function(data_in){
+  out=c()
+  for(i in seq(1,dim(data_in)[2])){
+    out=c(out,median(data_in[,i],na.rm = TRUE))
+  }
+  return(out)
+}
+
+
+col_quantile=function(data_in, prob){
+  out=c()
+  for(i in seq(1,dim(data_in)[2])){
+    out=c(out,as.numeric(quantile(data_in[,i],na.rm = TRUE, prob=prob)))
+  }
+  return(out)
+}
+
 
 elbow_index=function(vec_in){
 
@@ -1077,7 +1095,7 @@ main_iteration_version3_fast <-  function(X_in, Y_in, lambdaV, minX, maxX, targe
       delta_X[k,] <- CGNR_ATAx_ATb_with_reg(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k])
 
      if(stayIn_initialRange){
-       delta_X[k,]=delta_X[k,]/(max(c(1, max((delta_X[k,])/(X_in[k,] - minX)), max((delta_X[k,])/(maxX-X_in[k,])))))
+       delta_X[k,]=delta_X[k,]/(max(c(1, max(abs(delta_X[k,])/abs(X_in[k,] - minX)), max(abs(delta_X[k,])/abs(maxX-X_in[k,])))))
      }
     }
 
