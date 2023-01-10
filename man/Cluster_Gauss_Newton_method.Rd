@@ -9,6 +9,9 @@ Cluster_Gauss_Newton_method(
   targetVector,
   initial_lowerRange,
   initial_upperRange,
+  lowerBound = NA,
+  upperBound = NA,
+  ParameterNames = NA,
   stayIn_initialRange = FALSE,
   num_minimizersToFind = 250,
   num_iteration = 25,
@@ -31,6 +34,12 @@ Cluster_Gauss_Newton_method(
 \item{initial_lowerRange}{(required input) \emph{A vector of real number of length n} where each element represents  \strong{the lower range of the initial iterate}. Similarly to regular Gauss-Newton method, CGNM iteratively reduce the residual to find minimizers.  Essential differences is that CGNM start from the initial RANGE and not an initial point. Note that CGNM is an unconstraint optimization method so the final minimizer can be anywhere (and outside of this specified range).  In the parameter estimation problem, there often is a constraints to the parameters (e.g., parameters cannot be negative).. If you wish to constraint the parameter domain do so via parameter transformation (e.g., if parameter needs to be positive do log transform, if there is upper and lower bounds consider using logit transform.)}
 
 \item{initial_upperRange}{(required input) \emph{A vector of real number of length n} where each element represents  \strong{the upper range of the initial iterate}.}
+
+\item{lowerBound}{(default: NA) \emph{A vector of real number or NA of length n} where each element represents  \strong{the lower bound of the parameter search}.  If no lower bound set that element NA.}
+
+\item{upperBound}{(default: NA) \emph{A vector of real number or NA of length n} where each element represents  \strong{the upper bound of the parameter search}.  If no upper bound set that element NA.}
+
+\item{ParameterNames}{(default: NA) \emph{A vector of string} of length n User can specify names of the parameters that will be used for the plots.}
 
 \item{stayIn_initialRange}{(default: FALSE) \emph{TRUE or FALSE} if set TRUE, the parameter search will conducted strictly within the range specified by initial_lowerRange and initial_upperRange.}
 

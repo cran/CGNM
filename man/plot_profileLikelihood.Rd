@@ -6,6 +6,7 @@
 \usage{
 plot_profileLikelihood(
   logLocation,
+  alpha = 0.25,
   numBins = NA,
   ParameterNames = NA,
   ReparameterizationDef = NA,
@@ -15,11 +16,13 @@ plot_profileLikelihood(
 \arguments{
 \item{logLocation}{(required input) \emph{A string} of folder directory where CGNM computation log files exist.}
 
+\item{alpha}{(default: 0.25) \emph{a number between 0 and 1} level of significance (used to draw horizontal line on the profile likelihood).}
+
 \item{numBins}{(default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)}
 
-\item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x1, x2, ...)}
+\item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)}
 
-\item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax and also refer to the ith element of the x vector (the input variable to the nonlinear function) as xi (e.g., if the first input variable to the nonlinear function is defined as x1=log10(Ka), then by setting "10^x1" as one of the strings in this vector, you can plot the violin plot of Ka)}
+\item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax}
 
 \item{showInitialRange}{(default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
 }

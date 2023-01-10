@@ -4,12 +4,21 @@
 \alias{bestApproximateMinimizers}
 \title{bestApproximateMinimizers}
 \usage{
-bestApproximateMinimizers(CGNM_result, numParameterSet = 1)
+bestApproximateMinimizers(
+  CGNM_result,
+  numParameterSet = 1,
+  ParameterNames = NA,
+  ReparameterizationDef = NA
+)
 }
 \arguments{
 \item{CGNM_result}{(required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.}
 
 \item{numParameterSet}{(default 1) \emph{A natural number} number of parameter sets to output (chosen from the smallest SSR to numParameterSet-th smallest SSR) .}
+
+\item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)}
+
+\item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax}
 }
 \value{
 \emph{A vector} a vector of accepted approximate minimizers with minimum SSR found by CGNM.

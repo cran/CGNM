@@ -6,6 +6,7 @@ knitr::opts_chunk$set(
 
 ## ----setup--------------------------------------------------------------------
 library(CGNM)
+library(knitr)
 
 ## ----define the model function------------------------------------------------
 model_function=function(x){
@@ -14,9 +15,9 @@ model_function=function(x){
   Dose=1000
   F=1
 
-  ka=10^x[1]
-  V1=10^x[2]
-  CL_2=10^x[3]
+  ka=x[1]
+  V1=x[2]
+  CL_2=x[3]
   t=observation_time
 
   Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
@@ -31,13 +32,19 @@ observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
 ## ---- warning = FALSE---------------------------------------------------------
 CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_function,
 targetVector = observation,
-initial_lowerRange = c(-2,-2,-2),initial_upperRange =  c(2,2,2), saveLog=TRUE, num_minimizersToFind = 500)
+initial_lowerRange =rep(0.01,3),initial_upperRange =  rep(100,3),lowerBound = rep(0,3), saveLog=TRUE, num_minimizersToFind = 500, ParameterNames = c("Ka","V1","CL"))
 
 ## -----------------------------------------------------------------------------
-head(acceptedApproximateMinimizers(CGNM_result))
+kable(head(acceptedApproximateMinimizers(CGNM_result)))
+
+## -----------------------------------------------------------------------------
+kable(table_parameterSummary(CGNM_result))
 
 ## -----------------------------------------------------------------------------
 CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result, nonlinearFunction=model_function)
+
+## -----------------------------------------------------------------------------
+kable(table_parameterSummary(CGNM_bootstrap))
 
 ## -----------------------------------------------------------------------------
 library(ggplot2)
@@ -46,7 +53,7 @@ library(ggplot2)
 plot_Rank_SSR(CGNM_result)
 
 ## ---- fig.width=6, fig.height=3.5---------------------------------------------
-plot_paraDistribution_byHistogram(CGNM_bootstrap,  ParameterNames=c("Ka","V1","CL_2"), ReparameterizationDef=c("10^x1","10^x2","10^x3"), bins = 50)
+plot_paraDistribution_byHistogram(CGNM_bootstrap, bins = 50)+scale_x_continuous(trans="log10")
 
 ## ---- fig.width = 7-----------------------------------------------------------
 plot_goodnessOfFit(CGNM_result, plotType = 1, independentVariableVector = c(0.1,0.2,0.4,0.6,1,2,3,6,12), plotRank = seq(1,50))
@@ -55,8 +62,70 @@ plot_goodnessOfFit(CGNM_result, plotType = 1, independentVariableVector = c(0.1,
 plot_goodnessOfFit(CGNM_bootstrap, plotType = 1, independentVariableVector = c(0.1,0.2,0.4,0.6,1,2,3,6,12))
 
 ## ---- fig.width = 7-----------------------------------------------------------
-plot_profileLikelihood(c("CGNM_log","CGNM_log_bootstrap"))
+plot_profileLikelihood(c("CGNM_log","CGNM_log_bootstrap"))+scale_x_continuous(trans="log10")
+
+## -----------------------------------------------------------------------------
+kable(table_profileLikelihoodConfidenceInterval(c("CGNM_log","CGNM_log_bootstrap"), alpha = 0.25))
 
 ## ---- fig.width = 7, fig.height = 6-------------------------------------------
-plot_2DprofileLikelihood("CGNM_log", numBins = 50, ParameterNames=c("log10(Ka)","log10(V1)","log10(CL_2)"), ReparameterizationDef = c("x1","x2","x3"))
+plot_2DprofileLikelihood(CGNM_result, showInitialRange=FALSE, alpha = 0.05)+scale_x_continuous(trans="log10")+scale_y_continuous(trans="log10")
+
+## -----------------------------------------------------------------------------
+model_matrix_function=function(X){
+  Y_list=lapply(split(X, rep(seq(1:nrow(X)),ncol(X))), model_function)
+  Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+}
+
+testX=t(matrix(c(rep(0.01,3),rep(10,3),rep(100,3)), nrow = 3))
+print("testX")
+print(testX)
+print("model_matrix_function(testX)")
+print(model_matrix_function(testX))
+
+print("model_matrix_function(testX)-rbind(model_function(testX[1,]),model_function(testX[2,]),model_function(testX[3,]))")
+print(model_matrix_function(testX)-rbind(model_function(testX[1,]),model_function(testX[2,]),model_function(testX[3,])))
+
+
+## -----------------------------------------------------------------------------
+
+# library(parallel)
+# 
+#  model_matrix_function=function(X){
+#   Y_list=mclapply(split(X, rep(seq(1:nrow(X)),ncol(X))), model_function,mc.cores = (parallel::detectCores()-1), mc.preschedule = FALSE)
+#   
+#   # sometimes the ODE solver quit prematurely and give partial result
+#   # so need to replace these with vector of NAs 
+#   obsLength=max(lengths(Y_list))  
+#   failed_indicies=which(lengths(Y_list)!=obsLength)
+#   for(i in failed_indicies){
+#     Y_list[[i]]=rep(NA,obsLength)
+#   }
+#   Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+# 
+#   return(Y)
+#  }
+
+
+## -----------------------------------------------------------------------------
+#library(foreach)
+#library(doParallel)
+
+#numCore=8
+#registerDoParallel(numCore-1)
+#cluster=makeCluster(numCore-1, type = "PSOCK")
+#registerDoParallel(cl=cluster)
+
+#model_matrix_function=function(X){
+#  Y_list=foreach(i=1:dim(X)[1], .export = c("model_function"))%dopar%{ #make sure to include all related functions in .export and all used packages in .packages for more information read documentation of dopar
+#      model_function((X[i,]))
+#    }
+  
+#  Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+#}
+
+
+## -----------------------------------------------------------------------------
+CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_matrix_function,
+targetVector = observation,
+initial_lowerRange =rep(0.01,3),initial_upperRange =  rep(100,3),lowerBound = rep(0,3), saveLog=TRUE, num_minimizersToFind = 500, ParameterNames = c("Ka","V1","CL"))
 

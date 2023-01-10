@@ -8,12 +8,13 @@ plot_2DprofileLikelihood(
   logLocation,
   index_x = NA,
   index_y = NA,
-  plotType = 1,
+  plotType = 2,
   plotMax = NA,
   ParameterNames = NA,
   ReparameterizationDef = NA,
   numBins = NA,
-  showInitialRange = FALSE
+  showInitialRange = FALSE,
+  alpha = 0.25
 )
 }
 \arguments{
@@ -23,17 +24,19 @@ plot_2DprofileLikelihood(
 
 \item{index_y}{(default: NA) \emph{A vector of strings or numbers} List parameter names or indices used for the surface plot. (if NA all parameters are used)}
 
-\item{plotType}{(default: 1) \emph{A number} 0: number of model evaluations done, 1: (1-alpha) where alpha is the significance level, this plot is recommended for the ease of visualization as it ranges from 0 to 1. 2: -2log likelihood. 3: SSR.  (For -2loglikelihood and SSR most likely that one would need to use plotMax function to restrict the range of values that is plotted.)}
+\item{plotType}{(default: 2) \emph{A number 0,1,2,3, or 4} 0: number of model evaluations done, 1: (1-alpha) where alpha is the significance level, this plot is recommended for the ease of visualization as it ranges from 0 to 1. 2: -2log likelihood. 3: SSR. 4: all points within 1-alpha confidence region}
 
 \item{plotMax}{(default: NA) \emph{A number} the maximum value that will be plotted on surface plot. (If NA all values are included in the plot, note SSR or likelihood can range many orders of magnitudes fo may want to restrict when plotting them)}
 
-\item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as x1, x2, ...)}
+\item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)}
 
-\item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax and also refer to the ith element of the x vector (the input variable to the nonlinear function) as xi (e.g., if the first input variable to the nonlinear function is defined as x1=log10(Ka), then by setting "10^x1" as one of the strings in this vector, you can plot the violin plot of Ka)}
+\item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax}
 
 \item{numBins}{(default: NA) \emph{A positive integer} 2D profile likelihood surface is plotted by finding the minimum SSR given two of the parameters are fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)}
 
 \item{showInitialRange}{(default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
+
+\item{alpha}{(default: 0.25) \emph{a number between 0 and 1} level of significance (all the points outside of this significance level will not be plotted when plot tyoe 1,2 or 4 are chosen).}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
@@ -76,8 +79,6 @@ CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,
 
 ## example with various options
 plot_2DprofileLikelihood(c("CGNM_log","CGNM_log_bootstrap"),
- ParameterNames=c("ka", "V1", "CL_2"),
- ReparameterizationDef=c("10^x1", "10^x2", "10^x3"),
  showInitialRange = TRUE,index_x = c("ka","V1"))
  }
 }

@@ -9,7 +9,9 @@ acceptedApproximateMinimizers(
   cutoff_pvalue = 0.05,
   numParametersIncluded = NA,
   useAcceptedApproximateMinimizers = TRUE,
-  algorithm = 2
+  algorithm = 2,
+  ParameterNames = NA,
+  ReparameterizationDef = NA
 )
 }
 \arguments{
@@ -22,9 +24,13 @@ acceptedApproximateMinimizers(
 \item{useAcceptedApproximateMinimizers}{(default: TRUE) \emph{TRUE or FALSE} If true then use chai-square and elbow method to choose maximum accepted SSR.  If false returns the parameters upto numParametersIncluded-th smallest SSR (or if numParametersIncluded=NA then use all the parameters found by the CGNM).}
 
 \item{algorithm}{(default: 2) \emph{1 or 2} specify the algorithm used for obtain accepted approximate minimizers. (Algorithm 1 uses elbow method, Algorithm 2 uses Grubbs' Test for Outliers.)}
+
+\item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)}
+
+\item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax}
 }
 \value{
-\emph{A matrix} that each row stores the accepted approximate minimizers found by CGNM.
+\emph{A dataframe} that each row stores the accepted approximate minimizers found by CGNM.
 }
 \description{
 CGNM find multiple sets of minimizers of the nonlinear least squares (nls) problem by solving nls from various initial iterates.  Although CGNM is shown to be robust compared to other conventional multi-start algorithms, not all initial iterates minimizes successfully.  By assuming sum of squares residual (SSR) follows the chai-square distribution we first reject the approximated minimiser who SSR is statistically significantly worse than the minimum SSR found by the CGNM.  Then use elbow-method (a heuristic often used in mathematical optimisation to balance the quality and the quantity of the solution found) to find the "acceptable" maximum SSR. This function outputs the acceptable approximate minimizers of the nonlinear least squares problem found by the CGNM.

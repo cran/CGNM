@@ -54,11 +54,12 @@ observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
 CGNM_result=Cluster_Gauss_Newton_method(
 nonlinearFunction=model_analytic_function,
 targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
-initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10))
+initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+lowerBound=rep(0,3), ParameterNames=c("Ka","V1","CL_2"))
 
 CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,
      nonlinearFunction=model_analytic_function, num_bootstrapSample=100)
-plot_paraDistribution_byHistogram(CGNM_bootstrap,
- ParameterNames=c("Ka","V1","CL_2"), ReparameterizationDef=c("x1","x2","x3"))
+
+plot_paraDistribution_byHistogram(CGNM_bootstrap)
 
 }
