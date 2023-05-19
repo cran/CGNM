@@ -13,7 +13,7 @@ plot_2DprofileLikelihood(
   ParameterNames = NA,
   ReparameterizationDef = NA,
   numBins = NA,
-  showInitialRange = FALSE,
+  showInitialRange = TRUE,
   alpha = 0.25
 )
 }
@@ -34,7 +34,7 @@ plot_2DprofileLikelihood(
 
 \item{numBins}{(default: NA) \emph{A positive integer} 2D profile likelihood surface is plotted by finding the minimum SSR given two of the parameters are fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)}
 
-\item{showInitialRange}{(default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
+\item{showInitialRange}{(default: TRUE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
 
 \item{alpha}{(default: 0.25) \emph{a number between 0 and 1} level of significance (all the points outside of this significance level will not be plotted when plot tyoe 1,2 or 4 are chosen).}
 }

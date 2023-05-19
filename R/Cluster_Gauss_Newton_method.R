@@ -322,17 +322,17 @@ CGNM_input_test <- function(nonlinearFunction, targetVector, initial_lowerRange,
 #' Parameter estimation problems of mathematical models can often be formulated as nonlinear least squares problems.  In this context f can be thought at a model, x is the parameter, and y* is the observation.
 #' CGNM iteratively estimates the minimizer of the nonlinear least squares problem from various initial estimates hence finds multiple minimizers.
 #' Full detail of the algorithm and comparison with conventional method is available in the following publication, also please cite this publication when this algorithm is used in your research: Aoki et al. (2020) <doi.org/10.1007/s11081-020-09571-2>. Cluster Gauss–Newton method. Optimization and Engineering, 1-31.  As illustrated in this paper, CGNM is faster and more robust compared to repeatedly applying the conventional optimization/nonlinear least squares algorithm from various initial estimates. In addition, CGNM can realize this speed assuming the nonlinear function to be a black-box function (e.g. does not use things like adjoint equation of a system of ODE as the function does not have to be based on a system of ODEs.).
-#' @param nonlinearFunction (required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous).
+#' @param nonlinearFunction (required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous). Also this function can be matrix to matrix equation.  This can be used for parallerization, see vignettes for examples.
 #' @param targetVector (required input) \emph{A vector of real number of length m} where we minimize the Euclidean distance between the nonlinearFuncition and targetVector.  In the context of curve fitting targetVector can be though as \strong{the observational data}.
-#' @param initial_lowerRange (required input) \emph{A vector of real number of length n} where each element represents  \strong{the lower range of the initial iterate}. Similarly to regular Gauss-Newton method, CGNM iteratively reduce the residual to find minimizers.  Essential differences is that CGNM start from the initial RANGE and not an initial point. Note that CGNM is an unconstraint optimization method so the final minimizer can be anywhere (and outside of this specified range).  In the parameter estimation problem, there often is a constraints to the parameters (e.g., parameters cannot be negative).. If you wish to constraint the parameter domain do so via parameter transformation (e.g., if parameter needs to be positive do log transform, if there is upper and lower bounds consider using logit transform.)
+#' @param initial_lowerRange (required input) \emph{A vector of real number of length n} where each element represents  \strong{the lower range of the initial iterate}. Similarly to regular Gauss-Newton method, CGNM iteratively reduce the residual to find minimizers.  Essential differences is that CGNM start from the initial RANGE and not an initial point.
 #' @param initial_upperRange (required input) \emph{A vector of real number of length n} where each element represents  \strong{the upper range of the initial iterate}.
-#' @param lowerBound (default: NA) \emph{A vector of real number or NA of length n} where each element represents  \strong{the lower bound of the parameter search}.  If no lower bound set that element NA.
+#' @param lowerBound (default: NA) \emph{A vector of real number or NA of length n} where each element represents  \strong{the lower bound of the parameter search}.  If no lower bound set that element NA. Note that CGNM is an unconstraint optimization method so the final minimizer can be anywhere.  In the parameter estimation problem, there often is a constraints to the parameters (e.g., parameters cannot be negative). So when the upper or lower bound is set using this option, parameter transformation is conducted internally (e.g., if either the upper or lower bound is given parameters are log transformed, if the upper and lower bounds are given logit transform is used.)
 #' @param upperBound (default: NA) \emph{A vector of real number or NA of length n} where each element represents  \strong{the upper bound of the parameter search}.  If no upper bound set that element NA.
 #' @param ParameterNames (default: NA) \emph{A vector of string} of length n User can specify names of the parameters that will be used for the plots.
 #' @param stayIn_initialRange (default: FALSE) \emph{TRUE or FALSE} if set TRUE, the parameter search will conducted strictly within the range specified by initial_lowerRange and initial_upperRange.
 #' @param num_minimizersToFind  (default: 250) \emph{A positive integer} defining number of approximate minimizers CGNM will find. We usually \strong{use 250 when testing the model and 1000 for the final analysis}.  The computational cost increase proportionally to this number; however, larger number algorithm becomes more stable and increase the chance of finding more better minimizers. See Appendix C of our paper for detail.
 #' @param num_iteration (default: 25)  \emph{A positive integer} defining maximum number of iterations. We usually \strong{set 25 while model building and 100 for final analysis}.  Given each point terminates the computation when the convergence criterion is met the computation cost does not grow proportionally to the number of iterations (hence safe to increase this without significant increase in the computational cost).
-#' @param saveLog (default: FALSE) \emph{TRUE or FALSE} indicating either or not to save computation result from each iteration in CGNM_log folder. It requires disk write access right in the current working directory. \strong{Recommended to set TRUE if the computation is expected to take long time} as user can retrieve intrim computation result even if the computation is terminated prematurely (or even during the computation).
+#' @param saveLog (default: TRUE) \emph{TRUE or FALSE} indicating either or not to save computation result from each iteration in CGNM_log folder. It requires disk write access right in the current working directory. \strong{Recommended to set TRUE if the computation is expected to take long time} as user can retrieve intrim computation result even if the computation is terminated prematurely (or even during the computation).
 #' @param runName (default: "") \emph{string} that user can ue to identify the CGNM runs. The run history will be saved in the folder name CGNM_log_<runName>.  If this is set to "TIME" then runName is automatically set by the run start time.
 #' @param textMemo (default: "") \emph{string} that user can write an arbitrary text (without influencing computation). This text is stored with the computation result so that can be used for example to describe model so that the user can recognize the computation result.
 #' @param algorithmParameter_initialLambda (default: 1) \emph{A positive number} for initial value for the regularization coefficient lambda see Appendix B of of our paper for detail.
@@ -371,7 +371,8 @@ CGNM_input_test <- function(nonlinearFunction, targetVector, initial_lowerRange,
 #' CGNM_result=Cluster_Gauss_Newton_method(
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
-#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10))
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+#' saveLog = FALSE)
 #'
 #' acceptedApproximateMinimizers(CGNM_result)
 #'
@@ -401,14 +402,14 @@ CGNM_input_test <- function(nonlinearFunction, targetVector, initial_lowerRange,
 #' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
 #'
 #' CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_function,
-#' targetVector = observation,
+#' targetVector = observation, saveLog = FALSE,
 #' initial_lowerRange = c(0.1,0.1,0.1),initial_upperRange =  c(10,10,10))}
 #'
 #' @export
 #' @import stats MASS
 
 
-Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , lowerBound=NA, upperBound=NA, ParameterNames=NA, stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, keepInitialDistribution=NA){
+Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , lowerBound=NA, upperBound=NA, ParameterNames=NA, stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=TRUE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, keepInitialDistribution=NA){
 
   if(length(lowerBound)==1&is.na(lowerBound)[1]){
     lowerBound=rep(NA, length(initial_lowerRange))
@@ -502,6 +503,7 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction, targetVector, initial
 
 Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, keepInitialDistribution=NA,ParameterNames=NA,ReparameterizationDef=NA,lowerBound=NA, upperBound=NA){
 
+  CGNM_start_time=Sys.time()
   targetMatrix_in=targetMatrix
 
 
@@ -533,8 +535,16 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
   nonlinearFunctionCanTakeMatrixInput=FALSE
 
   if(testCGNMinput){
+
+    testCGNMinput_time_start=Sys.time()
     nonlinearFunctionCanTakeMatrixInput=CGNM_input_test(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange )
-  }
+    testCGNMinput_time_end=Sys.time()
+
+#    print(paste("Initial estimation of required computation time:",round((testCGNMinput_time_end-testCGNMinput_time_start)/3*num_minimizersToFind*num_iteration/60),"min"))
+    print(paste("CGNM iteration should finish before:",Sys.time()+(testCGNMinput_time_end-testCGNMinput_time_start)/3*num_minimizersToFind*num_iteration))
+
+
+    }
 
   showIntermetiateResults=FALSE
 
@@ -630,12 +640,29 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
         #
         # }else{
 
-        if(nonlinearFunctionCanTakeMatrixInput){
-          Y=tryCatch_nonlinearFunction(X, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
-        }else{
-          Y_list=lapply(split(X, rep(seq(1:nrow(X)),ncol(X))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
-          Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+        toCompute_X=X[is_alive==0,]
+
+
+        if(sum(is_alive==0)==1){
+          toCompute_X=matrix(toCompute_X,nrow=1,ncol = length(toCompute_X))
         }
+
+
+        if(nonlinearFunctionCanTakeMatrixInput){
+          toCompute_Y=tryCatch_nonlinearFunction(toCompute_X, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
+        }else{
+          Y_list=lapply(split(toCompute_X, rep(seq(1:nrow(toCompute_X)),ncol(toCompute_X))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
+          toCompute_Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+        }
+
+        Y[is_alive==0,]=toCompute_Y
+
+        # if(nonlinearFunctionCanTakeMatrixInput){
+        #   Y=tryCatch_nonlinearFunction(X, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
+        # }else{
+        #   Y_list=lapply(split(X, rep(seq(1:nrow(X)),ncol(X))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
+        #   Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+        # }
         #}
 
 
@@ -672,6 +699,7 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
     prev_residual <- residual
 
     for (k in seq(1,num_iteration)){
+      iteration_time_start=Sys.time()
 
       if(algorithmParameter_gamma=="AUTO"){
         if(k<50){
@@ -730,13 +758,28 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
         #
         #   }else{
 
-        if(nonlinearFunctionCanTakeMatrixInput){
-          Y_new=tryCatch_nonlinearFunction(X_new, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
-        }else{
-          Y_list=lapply(split(X_new, rep(seq(1:nrow(X_new)),ncol(X_new))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
-          Y_new=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+        toUpdate=(lambda_vec<(algorithmParameter_initialLambda*10^10))
 
+        X_toCompute=X_new[toUpdate,]
+
+        if(sum(toUpdate)==1){
+          X_toCompute=matrix(X_toCompute,nrow=1,ncol = dim(X_new)[2])
         }
+
+        Y_new=Y
+        if(sum(toUpdate)>0){
+          if(nonlinearFunctionCanTakeMatrixInput){
+            Y_computed=tryCatch_nonlinearFunction(X_toCompute, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
+          }else{
+            Y_list=lapply(split(X_toCompute, rep(seq(1:nrow(X_toCompute)),ncol(X_toCompute))), tryCatch_nonlinearFunction, num_observations=num_observations, nonlinearFunction=nonlinearFunction, validTarget=validTarget_vec)
+            Y_computed=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+
+          }
+          Y_new[toUpdate,]=Y_computed
+        }else{
+          break
+        }
+
 
         #}
 
@@ -755,7 +798,9 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
                 Y[i,] <- Y_new[i,]
                 lambda_vec[i] <- lambda_vec[i]/10
             } else {
+              if(lambda_vec[i]<(algorithmParameter_initialLambda*10^10)){
                 lambda_vec[i] <- lambda_vec[i]*10
+              }
             }
         }
 
@@ -777,9 +822,15 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
           CGNM_result=list(X=X,Y=Y,residual_history=residual_history, initialX=X_history[[1]], initialY=Y_history[[1]],lambda_history=lambda_history, runSetting=runSetting )
           save(file=paste0(saveFolderName,'/iteration_',toString(k),'.RDATA'), CGNM_result)
         }
+          iteration_time_end=Sys.time()
 
+          if(k==1){
+            print(paste("Rough estimation of remaining computation time:",round(as.numeric(iteration_time_end-iteration_time_start, units="mins")*(num_iteration-k)*10)/10,"min"))
+          }
 
-
+          if(k%%10==1){
+            print(paste("CGNM iteration estimated to finish at:",(iteration_time_end-iteration_time_start)*(num_iteration-k)+Sys.time()))
+          }
 
         if(median(prev_residual)==0){
           break
@@ -787,9 +838,15 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
     }
     CGNM_result=list(X=X,Y=Y,residual_history=residual_history, lambda_history=lambda_history, runSetting=runSetting, initialX=X_history[[1]], initialY=Y_history[[1]] )
 
+
+
     if(saveLog){
       save(file=paste0(saveFolderName,'/iteration_final.RDATA'), CGNM_result)
     }
+
+    CGNM_end_time=Sys.time()
+
+    print(paste("CGNM computation time: ",round(as.numeric(CGNM_end_time-CGNM_start_time, units="mins")*10)/10,"min"))
 
   return(CGNM_result)
 
@@ -1487,7 +1544,7 @@ CGNR_ATAx_ATb_with_regVec=function(A, b, lambda){#   //solves (A^TA+lambda_vec) 
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' lowerBound=rep(0,3), ParameterNames=c("Ka","V1","CL_2"))
+#' lowerBound=rep(0,3), ParameterNames=c("Ka","V1","CL_2"), saveLog = FALSE)
 #'
 #' CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,
 #'      nonlinearFunction=model_analytic_function, num_bootstrapSample=100)
@@ -1524,11 +1581,13 @@ if(is.na(indicesToUseAsInitialIterates[1])){
   acceptParaIndex=indicesToUseAsInitialIterates[indicesToUseAsInitialIterates<=dim(CGNM_result$X)[1]]
 }
 
-  if(length(acceptParaIndex)<50){
-    print(paste("WARNING: only", length(acceptParaIndex) ,"acceptable parameters found, may want to rerun with larger num_minimizersToFind and/or refine initial range."))
-    if(length(acceptParaIndex)<10){
-      stop("Too few accepted parameters.")
-    }
+  if(length(acceptParaIndex)<100){
+    print(paste("WARNING: only", length(acceptParaIndex) ,"acceptable parameters found, we will run bootstrap with top 50 parameters."))
+    #if(length(acceptParaIndex)<10){
+    #  stop("Too few accepted parameters.")
+    #}
+    acceptParaIndex=acceptedIndices(CGNM_result, cutoff_pvalue, 100, FALSE)
+
   }
 
 

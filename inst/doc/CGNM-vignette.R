@@ -89,17 +89,24 @@ print(model_matrix_function(testX)-rbind(model_function(testX[1,]),model_functio
 ## -----------------------------------------------------------------------------
 
 # library(parallel)
+#
+# obsLength=length(observation)
+# 
+## Given CGNM searches through wide range of parameter combination, it can encounter
+## parameter combinations that is not feasible to evaluate. This try catch function
+## is implemented within CGNM for regular functions but for the matrix functions
+## user needs to implement outside of CGNM
+#
+# modelFunction_tryCatch=function(x_in){
+#  out=tryCatch({model_function(x_in)},
+#               error=function(cond) {rep(NA, obsLength)}
+#  )
+#  return(out)
+# }
 # 
 #  model_matrix_function=function(X){
-#   Y_list=mclapply(split(X, rep(seq(1:nrow(X)),ncol(X))), model_function,mc.cores = (parallel::detectCores()-1), mc.preschedule = FALSE)
-#   
-#   # sometimes the ODE solver quit prematurely and give partial result
-#   # so need to replace these with vector of NAs 
-#   obsLength=max(lengths(Y_list))  
-#   failed_indicies=which(lengths(Y_list)!=obsLength)
-#   for(i in failed_indicies){
-#     Y_list[[i]]=rep(NA,obsLength)
-#   }
+#   Y_list=mclapply(split(X, rep(seq(1:nrow(X)),ncol(X))), modelFunction_tryCatch,mc.cores = (parallel::detectCores()-1), mc.preschedule = FALSE)
+#
 #   Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
 # 
 #   return(Y)
@@ -115,17 +122,39 @@ print(model_matrix_function(testX)-rbind(model_function(testX[1,]),model_functio
 #cluster=makeCluster(numCore-1, type = "PSOCK")
 #registerDoParallel(cl=cluster)
 
+# obsLength=length(observation)
+
+## Given CGNM searches through wide range of parameter combination, it can encounter
+## parameter combinations that is not feasible to evaluate. This try catch function
+## is implemented within CGNM for regular functions but for the matrix functions
+## user needs to implement outside of CGNM
+
+# modelFunction_tryCatch=function(x_in){
+#  out=tryCatch({model_function(x_in)},
+#               error=function(cond) {rep(NA, obsLength)}
+#  )
+#  return(out)
+# }
+
 #model_matrix_function=function(X){
-#  Y_list=foreach(i=1:dim(X)[1], .export = c("model_function"))%dopar%{ #make sure to include all related functions in .export and all used packages in .packages for more information read documentation of dopar
-#      model_function((X[i,]))
+#  Y_list=foreach(i=1:dim(X)[1], .export = c("model_function", "modelFunction_tryCatch"))%dopar%{ #make sure to include all related functions in .export and all used packages in .packages for more information read documentation of dopar
+#      modelFunction_tryCatch((X[i,]))
 #    }
   
 #  Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
 #}
 
 
+
 ## -----------------------------------------------------------------------------
 CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_matrix_function,
 targetVector = observation,
 initial_lowerRange =rep(0.01,3),initial_upperRange =  rep(100,3),lowerBound = rep(0,3), saveLog=TRUE, num_minimizersToFind = 500, ParameterNames = c("Ka","V1","CL"))
+
+
+#stopCluster(cluster) #make sure to close the created cluster if needed
+
+## -----------------------------------------------------------------------------
+unlink("CGNM_log", recursive=TRUE)
+unlink("CGNM_log_bootstrap", recursive=TRUE)
 

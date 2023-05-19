@@ -21,16 +21,16 @@ library(knitr)
 # When and when not to use CGNM
 
 ## Use CGNM
-- Wish to fit relatively complex parameterized model/curve/function to the data; however, unsure of the appropriate initial guess (e.g., "start" argument in nls function). => CGNM searches the parameter from multiple initial guess so that the use can specify rough initial range instad of a point initial guess.
-- When the practical identifiability (if there is only one best fit parameter or not) is unknown. => CGNM will find multiple set of best fit parameters; hence if the parameter is not practically identifiable then the multuple best-fit parameters found by CGNM will not converge to a point.
-- When the model is a blackbox (i.e., cannot be expricitly/easily write out as a "formula") and the model may not be continuous with respect to the parameter. => CGNM makes minimum assumptions on the model so all user need to provide is a function that takes the model parameter and simulation (and what happen in the function, CGNM does not care).
+- Wish to fit relatively complex parameterized model/curve/function to the data; however, unsure of the appropriate initial guess (e.g., "start" argument in nls function). => CGNM searches the parameter from multiple initial guess so that the use can specify rough initial range instead of a point initial guess.
+- When the practical identifiability (if there is only one best fit parameter or not) is unknown. => CGNM will find multiple set of best fit parameters; hence if the parameter is not practically identifiable then the multiple best-fit parameters found by CGNM will not converge to a point.
+- When the model is a blackbox (i.e., cannot be explicitly/easily write out as a "formula") and the model may not be continuous with respect to the parameter. => CGNM makes minimum assumptions on the model so all user need to provide is a function that takes the model parameter and simulation (and what happen in the function, CGNM does not care).
 
 ## Not to use CGNM
 - When the you already know where approximately the best fit parameter is and you just need to find one best fit parameter. => Simply use nls and that will be faster.
-- When the model is relatively simple and computation cost is not an issue. => CGNM is made to save the number of model evaluation dueing the parameter estimation, so may not see much advantage compared to the conventional multi-start methods (e.g.repeatedly using nls from various "start").
+- When the model is relatively simple and computation cost is not an issue. => CGNM is made to save the number of model evaluation during the parameter estimation, so may not see much advantage compared to the conventional multi-start methods (e.g.repeatedly using nls from various "start").
 
 # How to use CGNM
-To illutrate the use of CGNM here we illustrate how CGNM can be used to estiamte two sets of the best fit parameters of the pharmacokinetics model when the drug is administered orally (known as flip-flop kinetics).  
+To illustrate the use of CGNM here we illustrate how CGNM can be used to estimate two sets of the best fit parameters of the pharmacokinetics model when the drug is administered orally (known as flip-flop kinetics).  
 
 ## Prepare the model ($\boldsymbol f$)
 ```{r define the model function}
@@ -151,17 +151,24 @@ print(model_matrix_function(testX)-rbind(model_function(testX[1,]),model_functio
 ```{r}
 
 # library(parallel)
+#
+# obsLength=length(observation)
+# 
+## Given CGNM searches through wide range of parameter combination, it can encounter
+## parameter combinations that is not feasible to evaluate. This try catch function
+## is implemented within CGNM for regular functions but for the matrix functions
+## user needs to implement outside of CGNM
+#
+# modelFunction_tryCatch=function(x_in){
+#  out=tryCatch({model_function(x_in)},
+#               error=function(cond) {rep(NA, obsLength)}
+#  )
+#  return(out)
+# }
 # 
 #  model_matrix_function=function(X){
-#   Y_list=mclapply(split(X, rep(seq(1:nrow(X)),ncol(X))), model_function,mc.cores = (parallel::detectCores()-1), mc.preschedule = FALSE)
-#   
-#   # sometimes the ODE solver quit prematurely and give partial result
-#   # so need to replace these with vector of NAs 
-#   obsLength=max(lengths(Y_list))  
-#   failed_indicies=which(lengths(Y_list)!=obsLength)
-#   for(i in failed_indicies){
-#     Y_list[[i]]=rep(NA,obsLength)
-#   }
+#   Y_list=mclapply(split(X, rep(seq(1:nrow(X)),ncol(X))), modelFunction_tryCatch,mc.cores = (parallel::detectCores()-1), mc.preschedule = FALSE)
+#
 #   Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
 # 
 #   return(Y)
@@ -180,13 +187,28 @@ print(model_matrix_function(testX)-rbind(model_function(testX[1,]),model_functio
 #cluster=makeCluster(numCore-1, type = "PSOCK")
 #registerDoParallel(cl=cluster)
 
+# obsLength=length(observation)
+
+## Given CGNM searches through wide range of parameter combination, it can encounter
+## parameter combinations that is not feasible to evaluate. This try catch function
+## is implemented within CGNM for regular functions but for the matrix functions
+## user needs to implement outside of CGNM
+
+# modelFunction_tryCatch=function(x_in){
+#  out=tryCatch({model_function(x_in)},
+#               error=function(cond) {rep(NA, obsLength)}
+#  )
+#  return(out)
+# }
+
 #model_matrix_function=function(X){
-#  Y_list=foreach(i=1:dim(X)[1], .export = c("model_function"))%dopar%{ #make sure to include all related functions in .export and all used packages in .packages for more information read documentation of dopar
-#      model_function((X[i,]))
+#  Y_list=foreach(i=1:dim(X)[1], .export = c("model_function", "modelFunction_tryCatch"))%dopar%{ #make sure to include all related functions in .export and all used packages in .packages for more information read documentation of dopar
+#      modelFunction_tryCatch((X[i,]))
 #    }
   
 #  Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
 #}
+
 
 ```
 
@@ -194,6 +216,14 @@ print(model_matrix_function(testX)-rbind(model_function(testX[1,]),model_functio
 CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_matrix_function,
 targetVector = observation,
 initial_lowerRange =rep(0.01,3),initial_upperRange =  rep(100,3),lowerBound = rep(0,3), saveLog=TRUE, num_minimizersToFind = 500, ParameterNames = c("Ka","V1","CL"))
+
+
+#stopCluster(cluster) #make sure to close the created cluster if needed
+```
+
+```{r}
+unlink("CGNM_log", recursive=TRUE)
+unlink("CGNM_log_bootstrap", recursive=TRUE)
 ```
 
 

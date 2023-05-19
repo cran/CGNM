@@ -10,7 +10,7 @@ plot_profileLikelihood(
   numBins = NA,
   ParameterNames = NA,
   ReparameterizationDef = NA,
-  showInitialRange = FALSE
+  showInitialRange = TRUE
 )
 }
 \arguments{
@@ -24,7 +24,7 @@ plot_profileLikelihood(
 
 \item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax}
 
-\item{showInitialRange}{(default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
+\item{showInitialRange}{(default: TRUE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.

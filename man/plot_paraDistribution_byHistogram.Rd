@@ -57,7 +57,7 @@ nonlinearFunction=model_analytic_function,
 targetVector = observation,
 initial_lowerRange = rep(0.01,3), initial_upperRange =  rep(100,3),
 lowerBound=rep(0,3), ParameterNames = c("Ka","V1","CL"),
-num_iter = 10, num_minimizersToFind = 100)
+num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 
 plot_paraDistribution_byHistogram(CGNM_result)
 plot_paraDistribution_byHistogram(CGNM_result,

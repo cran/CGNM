@@ -15,7 +15,7 @@ Cluster_Gauss_Newton_method(
   stayIn_initialRange = FALSE,
   num_minimizersToFind = 250,
   num_iteration = 25,
-  saveLog = FALSE,
+  saveLog = TRUE,
   runName = "",
   textMemo = "",
   algorithmParameter_initialLambda = 1,
@@ -27,15 +27,15 @@ Cluster_Gauss_Newton_method(
 )
 }
 \arguments{
-\item{nonlinearFunction}{(required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous).}
+\item{nonlinearFunction}{(required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous). Also this function can be matrix to matrix equation.  This can be used for parallerization, see vignettes for examples.}
 
 \item{targetVector}{(required input) \emph{A vector of real number of length m} where we minimize the Euclidean distance between the nonlinearFuncition and targetVector.  In the context of curve fitting targetVector can be though as \strong{the observational data}.}
 
-\item{initial_lowerRange}{(required input) \emph{A vector of real number of length n} where each element represents  \strong{the lower range of the initial iterate}. Similarly to regular Gauss-Newton method, CGNM iteratively reduce the residual to find minimizers.  Essential differences is that CGNM start from the initial RANGE and not an initial point. Note that CGNM is an unconstraint optimization method so the final minimizer can be anywhere (and outside of this specified range).  In the parameter estimation problem, there often is a constraints to the parameters (e.g., parameters cannot be negative).. If you wish to constraint the parameter domain do so via parameter transformation (e.g., if parameter needs to be positive do log transform, if there is upper and lower bounds consider using logit transform.)}
+\item{initial_lowerRange}{(required input) \emph{A vector of real number of length n} where each element represents  \strong{the lower range of the initial iterate}. Similarly to regular Gauss-Newton method, CGNM iteratively reduce the residual to find minimizers.  Essential differences is that CGNM start from the initial RANGE and not an initial point.}
 
 \item{initial_upperRange}{(required input) \emph{A vector of real number of length n} where each element represents  \strong{the upper range of the initial iterate}.}
 
-\item{lowerBound}{(default: NA) \emph{A vector of real number or NA of length n} where each element represents  \strong{the lower bound of the parameter search}.  If no lower bound set that element NA.}
+\item{lowerBound}{(default: NA) \emph{A vector of real number or NA of length n} where each element represents  \strong{the lower bound of the parameter search}.  If no lower bound set that element NA. Note that CGNM is an unconstraint optimization method so the final minimizer can be anywhere.  In the parameter estimation problem, there often is a constraints to the parameters (e.g., parameters cannot be negative). So when the upper or lower bound is set using this option, parameter transformation is conducted internally (e.g., if either the upper or lower bound is given parameters are log transformed, if the upper and lower bounds are given logit transform is used.)}
 
 \item{upperBound}{(default: NA) \emph{A vector of real number or NA of length n} where each element represents  \strong{the upper bound of the parameter search}.  If no upper bound set that element NA.}
 
@@ -47,7 +47,7 @@ Cluster_Gauss_Newton_method(
 
 \item{num_iteration}{(default: 25)  \emph{A positive integer} defining maximum number of iterations. We usually \strong{set 25 while model building and 100 for final analysis}.  Given each point terminates the computation when the convergence criterion is met the computation cost does not grow proportionally to the number of iterations (hence safe to increase this without significant increase in the computational cost).}
 
-\item{saveLog}{(default: FALSE) \emph{TRUE or FALSE} indicating either or not to save computation result from each iteration in CGNM_log folder. It requires disk write access right in the current working directory. \strong{Recommended to set TRUE if the computation is expected to take long time} as user can retrieve intrim computation result even if the computation is terminated prematurely (or even during the computation).}
+\item{saveLog}{(default: TRUE) \emph{TRUE or FALSE} indicating either or not to save computation result from each iteration in CGNM_log folder. It requires disk write access right in the current working directory. \strong{Recommended to set TRUE if the computation is expected to take long time} as user can retrieve intrim computation result even if the computation is terminated prematurely (or even during the computation).}
 
 \item{runName}{(default: "") \emph{string} that user can ue to identify the CGNM runs. The run history will be saved in the folder name CGNM_log_<runName>.  If this is set to "TIME" then runName is automatically set by the run start time.}
 
@@ -109,7 +109,8 @@ observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
 CGNM_result=Cluster_Gauss_Newton_method(
 nonlinearFunction=model_analytic_function,
 targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
-initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10))
+initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+saveLog = FALSE)
 
 acceptedApproximateMinimizers(CGNM_result)
 
@@ -138,7 +139,7 @@ log10(odeSol[,"C_2"])
 observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
 
 CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_function,
-targetVector = observation,
+targetVector = observation, saveLog = FALSE,
 initial_lowerRange = c(0.1,0.1,0.1),initial_upperRange =  c(10,10,10))}
 
 }

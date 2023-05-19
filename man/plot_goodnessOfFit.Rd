@@ -16,11 +16,9 @@ plot_goodnessOfFit(
 \arguments{
 \item{CGNM_result}{(required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.}
 
-\item{plotType}{(default: 1) \emph{1,2 or 3}\cr specify the kind of goodness of fit plot to create\enumerate{\item dependent variable v.s. independent variable with overlay of the target as red dots (e.g.,plots of time-course concentration profile with overlay of observed concentration in red dots). When CGNM_result include bootstrap analysis result, then the model simulation with median, 5 percentile and 95 percentile will be plotted.
-\item residual v.s. dependent variable (used to check to make sure one has chosen the right "shape" of residual distribution, i.e., additive, proportional etc., check to make sure there is no noticeable trend.)
-\item residual v.s. independent variable (e.g., use to check if the model-fit is equally good throughout different phases of time-course profile.)}}
+\item{plotType}{(default: 1) \emph{1,2 or 3}\cr specify the kind of goodness of fit plot to create}
 
-\item{plotRank}{(default: c(1)) \emph{an integer of a vector of integers}\cr Specify which rank of the parameter to use for the goodness of fit plots. (e.g., if one wishes to use rank 1 to 100 then set it to be seq(1,100), or if one wish to use 88th rank parameters then set this as 88.)}
+\item{plotRank}{(default: c(1)) \emph{a vector of integers}\cr Specify which rank of the parameter to use for the goodness of fit plots. (e.g., if one wishes to use rank 1 to 100 then set it to be seq(1,100), or if one wish to use 88th rank parameters then set this as 88.)}
 
 \item{independentVariableVector}{(default: NA) \emph{a vector of numerics of length m} \cr set independent variables that target values are associated with (e.g., time of the drug concentration measurement one is fitting PBPK model to) \cr(when this variable is set to NA, seq(1,m) will be used as independent variable when appropriate).}
 
@@ -34,10 +32,10 @@ plot_goodnessOfFit(
 \description{
 Make goodness of fit plots to assess the model-fit and bias in residual distribution.\cr\cr
 Explanation of the terminologies in terms of PBPK model fitting to the time-course drug concentration measurements:
-\enumerate{\item "independent variable" is time
-\item"dependent variable" is the concentration.
-\item "Residual" is the difference between the measured concentration and the model simulation with the parameter fond by the CGNM.
-\item "m" is number of observations}
+\cr "independent variable" is time
+\cr "dependent variable" is the concentration.
+\cr "Residual" is the difference between the measured concentration and the model simulation with the parameter fond by the CGNM.
+\cr "m" is number of observations
 }
 \examples{
 
@@ -64,7 +62,7 @@ nonlinearFunction=model_analytic_function,
 targetVector = observation,
 initial_lowerRange = rep(0.01,3), initial_upperRange =  rep(100,3),
 lowerBound=rep(0,3), ParameterNames = c("Ka","V1","CL"),
-num_iter = 10, num_minimizersToFind = 100)
+num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 
 plot_goodnessOfFit(CGNM_result)
 plot_goodnessOfFit(CGNM_result,

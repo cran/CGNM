@@ -55,7 +55,7 @@ CGNM_result=Cluster_Gauss_Newton_method(
 nonlinearFunction=model_analytic_function,
 targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
 initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-lowerBound=rep(0,3), ParameterNames=c("Ka","V1","CL_2"))
+lowerBound=rep(0,3), ParameterNames=c("Ka","V1","CL_2"), saveLog = FALSE)
 
 CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,
      nonlinearFunction=model_analytic_function, num_bootstrapSample=100)

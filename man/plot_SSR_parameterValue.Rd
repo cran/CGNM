@@ -53,7 +53,7 @@ CGNM_result=Cluster_Gauss_Newton_method(
 nonlinearFunction=model_analytic_function,
 targetVector = observation,
 initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-num_iter = 10, num_minimizersToFind = 100)
+num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 
 plot_SSR_parameterValue(CGNM_result)
 }

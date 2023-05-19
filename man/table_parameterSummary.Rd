@@ -53,7 +53,7 @@ nonlinearFunction=model_analytic_function,
 targetVector = observation,
 initial_lowerRange = rep(0.01,3), initial_upperRange =  rep(100,3),
 lowerBound=rep(0,3), ParameterNames = c("Ka","V1","CL"),
-num_iter = 10, num_minimizersToFind = 100)
+num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 
 table_parameterSummary(CGNM_result)
 table_parameterSummary(CGNM_result,

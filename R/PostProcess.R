@@ -179,7 +179,7 @@ makeParaDistributionPlotDataFrame=function(CGNM_result, indicesToInclude=NA, cut
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' acceptedMaxSSR(CGNM_result)
 #' @export
@@ -307,7 +307,7 @@ acceptedMaxSSR=function(CGNM_result, cutoff_pvalue=0.05, numParametersIncluded=N
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' acceptedApproximateMinimizers(CGNM_result)
 #' @export
@@ -380,7 +380,7 @@ acceptedApproximateMinimizers=function(CGNM_result, cutoff_pvalue=0.05, numParam
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' acceptedIndices(CGNM_result)
 #' @export
@@ -423,7 +423,7 @@ acceptedIndices=function(CGNM_result, cutoff_pvalue=0.05, numParametersIncluded=
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' topInd=topIndices(CGNM_result, 10)
 #'
@@ -474,7 +474,7 @@ topIndices=function(CGNM_result, numTopIndices){
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' acceptedIndices_binary(CGNM_result)
 #' @export
@@ -517,7 +517,7 @@ acceptedIndices_binary=function(CGNM_result, cutoff_pvalue=0.05, numParametersIn
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' plot_Rank_SSR(CGNM_result)
 #' @export
@@ -591,7 +591,7 @@ plot_Rank_SSR=function(CGNM_result, indicesToInclude=NA){
 #' targetVector = observation,
 #' initial_lowerRange = rep(0.01,3), initial_upperRange =  rep(100,3),
 #' lowerBound=rep(0,3), ParameterNames = c("Ka","V1","CL"),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' plot_paraDistribution_byViolinPlots(CGNM_result)
 #' plot_paraDistribution_byViolinPlots(CGNM_result,
@@ -673,7 +673,7 @@ plot_paraDistribution_byViolinPlots=function(CGNM_result, indicesToInclude=NA, P
 #' targetVector = observation,
 #' initial_lowerRange = rep(0.01,3), initial_upperRange =  rep(100,3),
 #' lowerBound=rep(0,3), ParameterNames = c("Ka","V1","CL"),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' plot_paraDistribution_byHistogram(CGNM_result)
 #' plot_paraDistribution_byHistogram(CGNM_result,
@@ -718,7 +718,7 @@ plot_paraDistribution_byHistogram=function(CGNM_result, indicesToInclude=NA, Par
 #' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
 #' @param ParameterNames (default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)
 #' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax
-#' @param showInitialRange (default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
+#' @param showInitialRange (default: TRUE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
 #' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 #' @examples
 #'\dontrun{
@@ -750,7 +750,7 @@ plot_paraDistribution_byHistogram=function(CGNM_result, indicesToInclude=NA, Par
 #' }
 #' @export
 #' @import ggplot2
-plot_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE){
+plot_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=TRUE){
   plot_SSRsurface(logLocation,  alpha= alpha, profile_likelihood=TRUE, numBins=numBins, ParameterNames=ParameterNames, ReparameterizationDef=ReparameterizationDef, showInitialRange=showInitialRange)
 }
 
@@ -823,17 +823,17 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
   for(para_nu in paraKind){
     dataframe_nu=subset(likelihoodSurfacePlot_df,parameterName==para_nu)
 
-    upprBoundIndex=which(max(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
+    upperBoundIndex=which(max(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
     lowerBoundIndex=which(min(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
 
-    if(upprBoundIndex==length(dataframe_nu$value)){
-      upperBound=NA
+    if(upperBoundIndex==length(dataframe_nu$value)){
+      upperBound=paste0(">",dataframe_nu$value[upperBoundIndex])
     }else{
-      upperBound=(dataframe_nu$value[upprBoundIndex]+dataframe_nu$value[upprBoundIndex+1])/2
+      upperBound=(dataframe_nu$value[upperBoundIndex]+dataframe_nu$value[upperBoundIndex+1])/2
     }
 
     if(lowerBoundIndex==1){
-      lowerBound=NA
+      lowerBound=paste0("<",dataframe_nu$value[lowerBoundIndex])
     }else{
       lowerBound=(dataframe_nu$value[lowerBoundIndex]+dataframe_nu$value[lowerBoundIndex-1])/2
     }
@@ -909,8 +909,11 @@ plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBi
   likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
   #residual_variance=data$residual_variance
   reparaXinit=data$initialX
+
   ParameterNames=data$ParameterNames
   ReparameterizationDef=data$ReparameterizationDef
+
+  likelihoodSurfacePlot_df$parameterName=factor(likelihoodSurfacePlot_df$parameterName, levels=ParameterNames)
 
   if(profile_likelihood){
     #    likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, negative2LogLikelihood<=(2*(3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood))))
@@ -935,15 +938,15 @@ plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBi
       Xinit_max=c(Xinit_max,max(reparaXinit[,i]))
     }
 
-    g=g+ggplot2:: geom_rect(data=data.frame(minBoundValue=Xinit_min, maxBoundValue=Xinit_max,parameterName=ParameterNames), ggplot2::aes(xmin=minBoundValue, xmax=maxBoundValue, ymin=-Inf, ymax=Inf), alpha=0.3, fill="grey")
-    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_min, parameterName=ParameterNames), ggplot2::aes(xintercept=boundValue), colour="gray")
-    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_max, parameterName=ParameterNames), ggplot2::aes(xintercept=boundValue), colour="gray")
+    g=g+ggplot2:: geom_rect(data=data.frame(minBoundValue=Xinit_min, maxBoundValue=Xinit_max,parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xmin=minBoundValue, xmax=maxBoundValue, ymin=-Inf, ymax=Inf), alpha=0.3, fill="grey")
+    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_min, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray")
+    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_max, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray")
   }
 
   if(profile_likelihood){
     g=g+ggplot2::facet_wrap(.~parameterName,scales = "free_x")+ggplot2::ylab("-2log likelihood")+ggplot2::xlab("Parameter Value")
-    g=g+ggplot2::geom_hline(yintercept = qchisq(1-alpha,1)+min(likelihoodSurfacePlot_df$negative2LogLikelihood), colour="grey")
-
+    g=g+ggplot2::geom_hline(yintercept = qchisq(1-alpha,1)+min(likelihoodSurfacePlot_df$negative2LogLikelihood), colour="grey")+
+      labs(caption = paste0("Horizontal grey line is the threshold for confidence intervals corresponding to a confidence level of ",(1-alpha)*100,"%."))
   }else{
     g=g+ggplot2::facet_wrap(.~parameterName,scales = "free_x")+ggplot2::ylab("SSR")+ggplot2::xlab("Parameter Value")
 
@@ -1173,7 +1176,7 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
 #' @param numBins (default: NA) \emph{A positive integer} 2D profile likelihood surface is plotted by finding the minimum SSR given two of the parameters are fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
 #' @param ParameterNames (default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)
 #' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax
-#' @param showInitialRange (default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
+#' @param showInitialRange (default: TRUE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
 #' @param alpha (default: 0.25) \emph{a number between 0 and 1} level of significance (all the points outside of this significance level will not be plotted when plot tyoe 1,2 or 4 are chosen).
 #' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 #' @examples
@@ -1215,7 +1218,7 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
 #'  }
 #' @export
 #' @import ggplot2
-plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=2,plotMax=NA, ParameterNames=NA, ReparameterizationDef=NA,numBins=NA, showInitialRange=FALSE, alpha=0.25){
+plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=2,plotMax=NA, ParameterNames=NA, ReparameterizationDef=NA,numBins=NA, showInitialRange=TRUE, alpha=0.25){
 
   x_axis=NULL
   y_axis=NULL
@@ -1386,8 +1389,8 @@ plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=
 
           }
 
-          aggData_df$x_lab=preppedDataset_list$ParameterNames[index_x]
-          aggData_df$y_lab=preppedDataset_list$ParameterNames[index_y]
+          aggData_df$x_lab=factor(preppedDataset_list$ParameterNames[index_x],levels=preppedDataset_list$ParameterNames[index_x])
+          aggData_df$y_lab=factor(preppedDataset_list$ParameterNames[index_y],levels=preppedDataset_list$ParameterNames[index_y])
 
           aggData_comnbined_df=rbind(aggData_comnbined_df,aggData_df)
       }
@@ -1587,7 +1590,7 @@ makeInitialClusterForPLrefinment=function(logLocation, paraIndex, range=NA,numPe
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' plot_SSR_parameterValue(CGNM_result)
 #' @export
@@ -1662,7 +1665,7 @@ plot_SSR_parameterValue=function(CGNM_result, indicesToInclude=NA, ParameterName
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' plot_parameterValue_scatterPlots(CGNM_result)
 #' @export
@@ -1749,7 +1752,7 @@ plot_parameterValue_scatterPlots=function(CGNM_result, indicesToInclude=NA){
 #' nonlinearFunction=model_analytic_function,
 #' targetVector = observation,
 #' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' bestApproximateMinimizers(CGNM_result,10)
 #' @export
@@ -1797,20 +1800,17 @@ bestApproximateMinimizers=function(CGNM_result, numParameterSet=1,ParameterNames
 
 }
 
-
 #' @title plot_goodnessOfFit
 #' @description
 #' Make goodness of fit plots to assess the model-fit and bias in residual distribution.\cr\cr
 #' Explanation of the terminologies in terms of PBPK model fitting to the time-course drug concentration measurements:
-#' \enumerate{\item "independent variable" is time
-#' \item"dependent variable" is the concentration.
-#' \item "Residual" is the difference between the measured concentration and the model simulation with the parameter fond by the CGNM.
-#' \item "m" is number of observations}
+#' \cr "independent variable" is time
+#' \cr "dependent variable" is the concentration.
+#' \cr "Residual" is the difference between the measured concentration and the model simulation with the parameter fond by the CGNM.
+#' \cr "m" is number of observations
 #' @param CGNM_result (required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.
-#' @param plotType (default: 1) \emph{1,2 or 3}\cr specify the kind of goodness of fit plot to create\enumerate{\item dependent variable v.s. independent variable with overlay of the target as red dots (e.g.,plots of time-course concentration profile with overlay of observed concentration in red dots). When CGNM_result include bootstrap analysis result, then the model simulation with median, 5 percentile and 95 percentile will be plotted.
-#'  \item residual v.s. dependent variable (used to check to make sure one has chosen the right "shape" of residual distribution, i.e., additive, proportional etc., check to make sure there is no noticeable trend.)
-#'  \item residual v.s. independent variable (e.g., use to check if the model-fit is equally good throughout different phases of time-course profile.)}
-#' @param plotRank (default: c(1)) \emph{an integer of a vector of integers}\cr Specify which rank of the parameter to use for the goodness of fit plots. (e.g., if one wishes to use rank 1 to 100 then set it to be seq(1,100), or if one wish to use 88th rank parameters then set this as 88.)
+#' @param plotType (default: 1) \emph{1,2 or 3}\cr specify the kind of goodness of fit plot to create
+#' @param plotRank (default: c(1)) \emph{a vector of integers}\cr Specify which rank of the parameter to use for the goodness of fit plots. (e.g., if one wishes to use rank 1 to 100 then set it to be seq(1,100), or if one wish to use 88th rank parameters then set this as 88.)
 #' @param independentVariableVector (default: NA) \emph{a vector of numerics of length m} \cr set independent variables that target values are associated with (e.g., time of the drug concentration measurement one is fitting PBPK model to) \cr(when this variable is set to NA, seq(1,m) will be used as independent variable when appropriate).
 #' @param dependentVariableTypeVector (default: NA) \emph{a vector of text of length m} \cr when this variable is set (i.e., not NA) then the goodness of fit analyses is done for each variable type.  For example, if we are fitting the PBPK model to data with multiple dose arms, one can see the goodness of fit for each dose arm by specifying which dose group the observations are from.
 #' @param absResidual (default: FALSE)  \emph{TRUE or FALSE} If TRUE plot absolute values of the residual.
@@ -1840,7 +1840,7 @@ bestApproximateMinimizers=function(CGNM_result, numParameterSet=1,ParameterNames
 #' targetVector = observation,
 #' initial_lowerRange = rep(0.01,3), initial_upperRange =  rep(100,3),
 #' lowerBound=rep(0,3), ParameterNames = c("Ka","V1","CL"),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' plot_goodnessOfFit(CGNM_result)
 #' plot_goodnessOfFit(CGNM_result,
@@ -1860,6 +1860,7 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
   ind=NULL
   residual=NULL
   SSR=NULL
+  SD=NULL
 
 
   independentVariableVector_in=independentVariableVector
@@ -1897,6 +1898,8 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
     residualPlot_df$residual=abs(residualPlot_df$residual)
   }
 
+  residualPlot_df=residualPlot_df[!is.na(residualPlot_df$residual),]
+
   withBootstrap=!is.null(CGNM_result$bootstrapY)
 
   median_vec=c()
@@ -1914,6 +1917,7 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
     uncertaintyBound_df=data.frame(independent_variable=independentVariableVector, dependent_variable_type=dependentVariableTypeVector, median=median_vec, lower=percentile5_vec, upper=percentile95_vec, target=CGNM_result$runSetting$targetVector)
   }
 
+  uncertaintyBound_df=uncertaintyBound_df[!is.na(uncertaintyBound_df$target),]
 
   if(plotType==1){ #dependent variable v.s. independent variable (e.g., concentration-time profile)
     if(withBootstrap){
@@ -1935,10 +1939,28 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
     }
   }else if(plotType==2){ #residual v.s. dependent variable (e.g., residual-fitted model profile)
     p<-ggplot2::ggplot(residualPlot_df,ggplot2::aes(x=model_fit, y=residual))+ggplot2::geom_point()
-    p=p+ggplot2::geom_smooth()
-    p=p+ggplot2::xlab("Dependent Variable")
-    p=p+ggplot2::ylab("Residual")
+    p=p+ggplot2::geom_smooth(method = lm)
+    p=p+ggplot2::xlab("Dependent Variable (simulation)")
+    if(absResidual){
+      p=p+ggplot2::ylab("Residual")
+    }else{
+      p=p+ggplot2::ylab("Residual (absolute value")
+    }
 
+    if(!is.na(dependentVariableTypeVector[1])){
+      p=p+ggplot2::facet_grid(.~dependent_variable_type, scales = "free")
+    }
+
+    p=p+geom_hline(yintercept = 0)
+  }else if(plotType==4){ #residual v.s. dependent variable (e.g., residual-fitted model profile)
+    p<-ggplot2::ggplot(residualPlot_df,ggplot2::aes(x=target, y=residual))+ggplot2::geom_point()
+    p=p+ggplot2::geom_smooth(method = lm)
+    p=p+ggplot2::xlab("Dependent Variable (target)")
+    if(absResidual){
+      p=p+ggplot2::ylab("Residual")
+    }else{
+      p=p+ggplot2::ylab("Residual (absolute value")
+    }
     if(!is.na(dependentVariableTypeVector[1])){
       p=p+ggplot2::facet_grid(.~dependent_variable_type, scales = "free")
     }
@@ -1948,17 +1970,24 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
 
     if(is.na(independentVariableVector_in[1])){
       p<-ggplot2::ggplot(residualPlot_df,ggplot2::aes(x=residual))+ggplot2::geom_histogram()
-      p=p+ggplot2::xlab("Residual")
+      if(absResidual){
+        p=p+ggplot2::xlab("Residual")
+      }else{
+        p=p+ggplot2::xlab("Residual (absolute value")
+      }
 
       if(!is.na(dependentVariableTypeVector[1])){
         p=p+ggplot2::facet_grid(.~dependent_variable_type, scales = "free")
       }
     }else{
       p<-ggplot2::ggplot(residualPlot_df,ggplot2::aes(x=independent_variable, y=residual))+ggplot2::geom_point()
-      p=p+ggplot2::geom_smooth()
+      p=p+ggplot2::geom_smooth(method = lm)
       p=p+ggplot2::xlab("Independent Variable")
-      p=p+ggplot2::ylab("Residual")
-
+      if(absResidual){
+        p=p+ggplot2::ylab("Residual")
+      }else{
+        p=p+ggplot2::ylab("Residual (absolute value")
+      }
       if(!is.na(dependentVariableTypeVector[1])){
         p=p+ggplot2::facet_grid(.~dependent_variable_type, scales = "free")
       }
@@ -1971,7 +2000,7 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
   }
 
 
-  if(plotType!=4&&(length(unique(dependentVariableTypeVector ))>1&length(plotRank)==1)){
+  if(plotType==1&&(length(unique(dependentVariableTypeVector ))>1&length(plotRank)==1)){
     SSR_byVariable=aggregate(residualPlot_df$square_residual, by=list(dependent_variable_type=residualPlot_df$dependent_variable_type), FUN=sum)
     SSR_byVariable$SSR=formatC(SSR_byVariable$x, format = "g", digits = 3)
 
@@ -1980,6 +2009,20 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
         size    = 5,
         data    = SSR_byVariable,
         mapping = aes(x = Inf, y = Inf, label = paste0("SSR=",SSR)),
+        hjust   = 1.05,
+        vjust   = 1.5,
+        inherit.aes = FALSE
+      )
+  }else if ((length(unique(dependentVariableTypeVector ))>1&length(plotRank)==1)){
+
+    SD_byVariable=aggregate(residualPlot_df$residual, by=list(dependent_variable_type=residualPlot_df$dependent_variable_type), FUN=sd)
+    SD_byVariable$SD=formatC(SD_byVariable$x, format = "g", digits = 3)
+
+    p=p+
+      geom_text(
+        size    = 5,
+        data    = SD_byVariable,
+        mapping = aes(x = Inf, y = Inf, label = paste0("StandardDiv.=",SD)),
         hjust   = 1.05,
         vjust   = 1.5,
         inherit.aes = FALSE
@@ -2027,7 +2070,7 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
 #' targetVector = observation,
 #' initial_lowerRange = rep(0.01,3), initial_upperRange =  rep(100,3),
 #' lowerBound=rep(0,3), ParameterNames = c("Ka","V1","CL"),
-#' num_iter = 10, num_minimizersToFind = 100)
+#' num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 #'
 #' table_parameterSummary(CGNM_result)
 #' table_parameterSummary(CGNM_result,
@@ -2094,3 +2137,621 @@ table_parameterSummary=function(CGNM_result, indicesToInclude=NA, ParameterNames
 
   return(summaryData_df)
 }
+
+
+
+#' @title suggestInitialLowerRange
+#' @description
+#' Suggest initial lower range based on the profile likelihood. The user can re-run CGNM with this suggested initial range so that to improve the convergence.
+#' @param logLocation (required input) \emph{A string or a list of strings} of folder directory where CGNM computation log files exist.
+#' @param alpha (default: 0.25) \emph{a number between 0 and 1} level of significance used to derive the confidence interval.
+#' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
+#' @return \emph{A numerical vector} of suggested initial lower range based on profile likelihood.
+#' @examples
+#'\dontrun{
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=x[1]
+#'  V1=x[2]
+#'  CL_2=x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  log10(Cp)
+#'}
+#'
+#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation,
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+#' num_iter = 10, num_minimizersToFind = 100, saveLog=TRUE)
+#'
+#' suggestInitialLowerRange("CGNM_log")
+#' }
+#' @export
+suggestInitialLowerRange=function(logLocation, alpha=0.25, numBins=NA){
+  ParameterNames=NA
+  ReparameterizationDef=NA
+  CGNM_result=NULL
+
+  boundValue=NULL
+  individual=NULL
+  label=NULL
+  minSSR=NULL
+  negative2LogLikelihood=NULL
+  newvalue=NULL
+
+  parameterName=NULL
+
+  reparaXinit=NULL
+  value=NULL
+
+
+  if(typeof(logLocation)=="character"){
+
+    DirectoryName_vec=c(logLocation)
+
+  }else if(typeof(logLocation)=="list"){
+    if(logLocation$runSetting$runName==""){
+      DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
+    }else{
+      DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
+    }
+
+  }else{
+    warning("DirectoryName need to be either the CGNM_result object or a string")
+  }
+
+  load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
+
+
+  data=makeSSRsurfaceDataset(logLocation, TRUE, numBins, NA, ParameterNames, ReparameterizationDef, FALSE)
+
+
+  likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
+
+  minSSR=min(likelihoodSurfacePlot_df$negative2LogLikelihood)
+
+  likelihoodSurfacePlot_df$belowSignificance=(likelihoodSurfacePlot_df$negative2LogLikelihood-qchisq(1-alpha,1)-minSSR<0)
+
+  paraKind=unique(likelihoodSurfacePlot_df$parameterName)
+
+  upperBound_vec=c()
+  lowerBound_vec=c()
+
+  for(para_nu in paraKind){
+    dataframe_nu=subset(likelihoodSurfacePlot_df,parameterName==para_nu)
+
+    upperBoundIndex=which(max(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
+    lowerBoundIndex=which(min(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
+
+    theoreticalLB=CGNM_result$runSetting$lowerBound[CGNM_result$runSetting$ParameterNames==para_nu]
+    theoreticalUB=CGNM_result$runSetting$upperBound[CGNM_result$runSetting$ParameterNames==para_nu]
+
+    if(upperBoundIndex==length(dataframe_nu$value)){
+      if(!is.na(theoreticalUB)){
+        upperBound=(dataframe_nu$value[upperBoundIndex]+theoreticalUB)/2
+
+      }else{
+        upperBound=dataframe_nu$value[upperBoundIndex]*10
+
+      }
+    }else{
+      upperBound=(dataframe_nu$value[upperBoundIndex]+dataframe_nu$value[upperBoundIndex+1])/2
+    }
+
+    if(lowerBoundIndex==1){
+      if(!is.na(theoreticalLB)){
+        lowerBound_suggest=(dataframe_nu$value[lowerBoundIndex]+theoreticalLB)/2
+
+      }else{
+        lowerBound_suggest=10^floor(log10(dataframe_nu$value[lowerBoundIndex]))/10
+      }
+
+    }else if(lowerBoundIndex>2){
+      lowerBound_suggest=dataframe_nu$value[lowerBoundIndex-2]
+    }else{
+
+      if(!is.na(theoreticalLB)){
+
+        lowerBound=(dataframe_nu$value[lowerBoundIndex]+dataframe_nu$value[lowerBoundIndex-1])/2
+        width=upperBound-lowerBound
+
+        if((lowerBound-width)>theoreticalLB){
+          lowerBound_suggest=(lowerBound-width)
+
+        }else{
+          lowerBound_suggest=(lowerBound+theoreticalLB)/2
+        }
+
+      }else{
+        lowerBound=(dataframe_nu$value[lowerBoundIndex]+dataframe_nu$value[lowerBoundIndex-1])/2
+        lowerBound_suggest=10^floor(log10(lowerBound))/10
+
+      }
+    }
+
+    upperBound_vec=c(upperBound_vec,upperBound)
+    lowerBound_vec=c(lowerBound_vec,lowerBound_suggest)
+  }
+
+  return(lowerBound_vec)
+}
+
+
+#' @title suggestInitialUpperRange
+#' @description
+#' Suggest initial upper range based on the profile likelihood. The user can re-run CGNM with this suggested initial range so that to improve the convergence.
+#' @param logLocation (required input) \emph{A string or a list of strings} of folder directory where CGNM computation log files exist.
+#' @param alpha (default: 0.25) \emph{a number between 0 and 1} level of significance used to derive the confidence interval.
+#' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
+#' @return \emph{A numerical vector} of suggested initial upper range based on profile likelihood.
+#' @examples
+#'\dontrun{
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=x[1]
+#'  V1=x[2]
+#'  CL_2=x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  log10(Cp)
+#'}
+#'
+#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation,
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+#' num_iter = 10, num_minimizersToFind = 100, saveLog=TRUE)
+#'
+#' suggestInitialLowerRange("CGNM_log")
+#' }
+#' @export
+suggestInitialUpperRange=function(logLocation, alpha=0.25, numBins=NA){
+  ParameterNames=NA
+  ReparameterizationDef=NA
+  CGNM_result=NULL
+
+  boundValue=NULL
+  individual=NULL
+  label=NULL
+  minSSR=NULL
+  negative2LogLikelihood=NULL
+  newvalue=NULL
+
+  parameterName=NULL
+
+  reparaXinit=NULL
+  value=NULL
+
+
+  if(typeof(logLocation)=="character"){
+
+    DirectoryName_vec=c(logLocation)
+
+  }else if(typeof(logLocation)=="list"){
+    if(logLocation$runSetting$runName==""){
+      DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
+    }else{
+      DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
+    }
+
+  }else{
+    warning("DirectoryName need to be either the CGNM_result object or a string")
+  }
+
+  load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
+
+
+  data=makeSSRsurfaceDataset(logLocation, TRUE, numBins, NA, ParameterNames, ReparameterizationDef, FALSE)
+
+
+  likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
+
+  minSSR=min(likelihoodSurfacePlot_df$negative2LogLikelihood)
+
+  likelihoodSurfacePlot_df$belowSignificance=(likelihoodSurfacePlot_df$negative2LogLikelihood-qchisq(1-alpha,1)-minSSR<0)
+
+  paraKind=unique(likelihoodSurfacePlot_df$parameterName)
+
+  upperBound_vec=c()
+  lowerBound_vec=c()
+
+  for(para_nu in paraKind){
+    dataframe_nu=subset(likelihoodSurfacePlot_df,parameterName==para_nu)
+
+    upperBoundIndex=which(max(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
+    lowerBoundIndex=which(min(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
+
+    theoreticalLB=CGNM_result$runSetting$lowerBound[CGNM_result$runSetting$ParameterNames==para_nu]
+    theoreticalUB=CGNM_result$runSetting$upperBound[CGNM_result$runSetting$ParameterNames==para_nu]
+
+    if(lowerBoundIndex==1){
+      if(!is.na(theoreticalLB)){
+        lowerBound=(dataframe_nu$value[lowerBoundIndex]+theoreticalLB)/2
+
+      }else{
+        lowerBound=dataframe_nu$value[lowerBoundIndex]*10
+
+      }
+    }else{
+      lowerBound=(dataframe_nu$value[lowerBoundIndex]+dataframe_nu$value[lowerBoundIndex+1])/2
+    }
+
+
+
+    if(upperBoundIndex==length(dataframe_nu$value)){
+      if(!is.na(theoreticalUB)){
+        upperBound_suggest=(dataframe_nu$value[upperBoundIndex]+theoreticalUB)/2
+
+      }else{
+        upperBound_suggest=10^ceiling(log10(dataframe_nu$value[upperBoundIndex]))*10
+      }
+
+
+    }else if((upperBoundIndex+2)<=length(dataframe_nu$value)){
+
+      upperBound_suggest=dataframe_nu$value[upperBoundIndex+2]
+
+    }else{
+
+      if(!is.na(theoreticalUB)){
+
+
+        upperBound=(dataframe_nu$value[upperBoundIndex]+dataframe_nu$value[upperBoundIndex-1])/2
+        width=upperBound-lowerBound
+
+        if((upperBound+width)<theoreticalUB){
+          upperBound_suggest=(upperBound+width)
+
+        }else{
+          upperBound_suggest=(upperBound+theoreticalUB)/2
+
+        }
+
+      }else{
+        upperBound=(dataframe_nu$value[upperBoundIndex]+dataframe_nu$value[upperBoundIndex-1])/2
+        upperBound_suggest=10^ceiling(log10(upperBound))*10
+
+      }
+    }
+
+    upperBound_vec=c(upperBound_vec,upperBound_suggest)
+  }
+
+  return(upperBound_vec)
+}
+
+
+
+
+#' @title plot_simulationWithCI
+#' @description
+#' Plot model simulation where the various parameter combinations are provided and conduct simulations and then the confidence interval (or more like a confidence region) is plotted.
+#' @param simulationFunction (required input) \emph{A function} that maps the parameter vector to the simulation.
+#' @param parameter_matrix (required input) \emph{A matrix of numbers} where each row contains the parameter combination that will be used for the simulations.
+#' @param independentVariableVector (default: NA) \emph{A vector of numbers} that represents the independent variables of each points of the simulation (e.g., observation time) where used for the values of x-axis when plotting. If set at NA then sequence of 1,2,3,... will be used.
+#' @param dependentVariableTypeVector (default: NA) \emph{A vector of strings} specify the kind of variable the simulationFunction simulate out. (i.e., if it simulate both PK and PD then indicate which simulation output is PK and which is PD).
+#' @param confidenceLevels (default: c(25,75)) \emph{A vector of two numbers between 0 and 1} set the confidence interval that will be used for the plot.  Default is inter-quartile range.
+#' @param observationVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
+#' @param observationIndpendentVariableVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
+#' @param observationDependentVariableTypeVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
+#' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+#' @examples
+#'\dontrun{
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=x[1]
+#'  V1=x[2]
+#'  CL_2=x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  (Cp)
+#'}
+#'
+#' observation=(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+#' lowerBound=rep(0,3), ParameterNames=c("Ka","V1","CL_2"), saveLog = FALSE)
+#'
+#' CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,
+#'      nonlinearFunction=model_analytic_function, num_bootstrapSample=100)
+#'
+#' plot_simulationWithCI(model_analytic_function, as.matrix(CGNM_result$bootstrapTheta),
+#' independentVariableVector=observation_time, observationVector=observation)
+#' }
+#' @export
+#' @import ggplot2
+
+plot_simulationWithCI=function(simulationFunction, parameter_matrix,  independentVariableVector=NA, dependentVariableTypeVector=NA, confidenceLevels=c(0.25,0.75), observationVector=NA, observationIndpendentVariableVector=NA, observationDependentVariableTypeVector=NA){
+
+  CGNM_result=NULL
+  independentVariable=NULL
+  dependentVariableType=NULL
+  lower_percentile=NULL
+  upper_percentile=NULL
+  observation=NULL
+
+  lengthSimulation=length(simulationFunction(as.numeric(parameter_matrix[1,])))
+
+  ValidIndependentVariableInput=TRUE
+
+  if(is.na(independentVariableVector[1])){
+    ValidIndependentVariableInput=FALSE
+    warning("independentVariableVector was not provided so replaced with seq(1,length of simulation)")
+
+  }else if(length(independentVariableVector)!=lengthSimulation){
+    ValidIndependentVariableInput=FALSE
+    warning("length of independentVariableVector was not the same length as the output of the simulationFunction so replaced with seq(1,length of output of simulation)")
+
+  }
+
+  if(!ValidIndependentVariableInput){
+    independentVariableVector=seq(1,lengthSimulation)
+  }
+
+  ValidobservationVectorInput=TRUE
+
+
+  if(is.na(observationVector[1])){
+    ValidobservationVectorInput=FALSE
+  }
+
+
+  if(ValidobservationVectorInput&is.na(observationIndpendentVariableVector[1])){
+    observationIndpendentVariableVector=independentVariableVector
+    warning("since observationIndpendentVariableVector is not provided replace it with independentVariableVector")
+
+  }
+
+  if(length(observationVector)!=length(observationIndpendentVariableVector)){
+    ValidobservationVectorInput=FALSE
+    warning("observationVector and observationIndpendentVariableVector need to be the same length hence observations will not be overlayed")
+  }
+
+  validDependentVariableTypeVectorInput=TRUE
+
+  if(is.na(dependentVariableTypeVector[1])){
+    validDependentVariableTypeVectorInput=FALSE
+  }else if(length(dependentVariableTypeVector)!=lengthSimulation){
+    dependentVariableTypeVector=NA
+    validDependentVariableTypeVectorInput=FALSE
+
+    warning("dependentVariableTypeVector was not the same length as the output of the simulationFunction so replaced with NA")
+  }
+
+
+
+  plot_df=data.frame()
+
+
+  for(i in seq(1,dim(parameter_matrix)[1] )){
+    plot_df=rbind(plot_df, data.frame(simulation=simulationFunction(as.numeric(parameter_matrix[i,])), independentVariable=independentVariableVector, dependentVariableType=dependentVariableTypeVector))
+  }
+
+  median_vec=c()
+  lower_percentile_vec=c()
+  upper_percentile_vec=c()
+  kind_df=unique(plot_df[,c("independentVariable", "dependentVariableType")])
+
+  for(i in seq(1,dim(kind_df)[1])){
+    kind=kind_df[i,]
+    if(validDependentVariableTypeVectorInput){
+      now_data_df=subset(plot_df, independentVariable==kind$independentVariable&dependentVariableType==kind$dependentVariableType )
+
+    }else{
+      now_data_df=subset(plot_df, independentVariable==kind$independentVariable )
+
+    }
+
+    nowQuantile=quantile(now_data_df$simulation, probs = c(confidenceLevels[1],0.5,confidenceLevels[2]), na.rm = TRUE)
+
+    lower_percentile_vec=c(lower_percentile_vec,nowQuantile[1])
+    median_vec=c(median_vec,nowQuantile[2])
+    upper_percentile_vec=c(upper_percentile_vec,nowQuantile[3])
+  }
+
+  plot_CI_df=kind_df
+  plot_CI_df$lower_percentile=as.numeric(lower_percentile_vec)
+  plot_CI_df$upper_percentile=as.numeric(upper_percentile_vec)
+  plot_CI_df$median=as.numeric(median_vec)
+
+
+  g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ labs(caption = paste0("solide line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
+
+ if(validDependentVariableTypeVectorInput){
+   g=g+ggplot2::facet_wrap(.~dependentVariableType)
+ }
+  if(ValidobservationVectorInput){
+    g=g+ggplot2::geom_point(data=data.frame(independentVariable=observationIndpendentVariableVector, observation=observationVector, dependentVariableType=observationDependentVariableTypeVector), colour="red", aes(x=independentVariable,y=observation), inherit.aes = FALSE)
+  }
+
+  g=g+ggplot2::ylab("Dependent variable")
+
+  return(g)
+}
+
+
+
+
+
+#' @title plot_simulationMatrixWithCI
+#' @description
+#' Plot simulation that are provided to plot confidence interval (or more like a confidence region).
+#' @param simulationMatrix (required input) \emph{A matrix of numbers} where each row contains the simulated values that will be plotted.
+#' @param independentVariableVector (default: NA) \emph{A vector of numbers} that represents the independent variables of each points of the simulation (e.g., observation time) where used for the values of x-axis when plotting. If set at NA then sequence of 1,2,3,... will be used.
+#' @param dependentVariableTypeVector (default: NA) \emph{A vector of strings} specify the kind of variable the simulation values are. (i.e., if it simulate both PK and PD then indicate which simulation value is PK and which is PD).
+#' @param confidenceLevels (default: c(25,75)) \emph{A vector of two numbers between 0 and 1} set the confidence interval that will be used for the plot.  Default is inter-quartile range.
+#' @param observationVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
+#' @param observationIndpendentVariableVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
+#' @param observationDependentVariableTypeVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
+#' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+#' @examples
+#'\dontrun{
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=x[1]
+#'  V1=x[2]
+#'  CL_2=x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  (Cp)
+#'}
+#'
+#' observation=(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation, num_iteration = 10, num_minimizersToFind = 100,
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+#' lowerBound=rep(0,3), ParameterNames=c("Ka","V1","CL_2"), saveLog = FALSE)
+#'
+#' CGNM_bootstrap=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,
+#'      nonlinearFunction=model_analytic_function, num_bootstrapSample=100)
+#'
+#'
+#' plot_simulationMatrixWithCI(CGNM_result$bootstrapY,
+#' independentVariableVector=observation_time, observationVector=observation)
+#' }
+#' @export
+#' @import ggplot2
+
+plot_simulationMatrixWithCI=function(simulationMatrix,  independentVariableVector=NA, dependentVariableTypeVector=NA, confidenceLevels=c(0.25,0.75), observationVector=NA, observationIndpendentVariableVector=NA, observationDependentVariableTypeVector=NA){
+
+  CGNM_result=NULL
+  independentVariable=NULL
+  dependentVariableType=NULL
+  lower_percentile=NULL
+  upper_percentile=NULL
+  observation=NULL
+
+  lengthSimulation=dim(simulationMatrix)[2]
+
+  ValidIndependentVariableInput=TRUE
+
+  if(is.na(independentVariableVector[1])){
+    ValidIndependentVariableInput=FALSE
+    warning("independentVariableVector was not provided so replaced with seq(1,length of simulation)")
+
+  }else if(length(independentVariableVector)!=lengthSimulation){
+    ValidIndependentVariableInput=FALSE
+    warning("length of independentVariableVector was not the same length as the output of the simulationFunction so replaced with seq(1,length of output of simulation)")
+
+  }
+
+  if(!ValidIndependentVariableInput){
+    independentVariableVector=seq(1,lengthSimulation)
+  }
+
+  ValidobservationVectorInput=TRUE
+
+
+  if(is.na(observationVector[1])){
+    ValidobservationVectorInput=FALSE
+  }
+
+
+  if(ValidobservationVectorInput&is.na(observationIndpendentVariableVector[1])){
+    observationIndpendentVariableVector=independentVariableVector
+    warning("since observationIndpendentVariableVector is not provided replace it with independentVariableVector")
+
+  }
+
+  if(length(observationVector)!=length(observationIndpendentVariableVector)){
+    ValidobservationVectorInput=FALSE
+    warning("observationVector and observationIndpendentVariableVector need to be the same length hence observations will not be overlayed")
+  }
+
+  validDependentVariableTypeVectorInput=TRUE
+
+  if(is.na(dependentVariableTypeVector[1])){
+    validDependentVariableTypeVectorInput=FALSE
+  }else if(length(dependentVariableTypeVector)!=lengthSimulation){
+    dependentVariableTypeVector=NA
+    validDependentVariableTypeVectorInput=FALSE
+
+    warning("dependentVariableTypeVector was not the same length as the output of the simulationFunction so replaced with NA")
+  }
+
+
+
+  plot_df=data.frame()
+
+
+  for(i in seq(1,dim(simulationMatrix)[1] )){
+    plot_df=rbind(plot_df, data.frame(simulation=simulationMatrix[i,], independentVariable=independentVariableVector, dependentVariableType=dependentVariableTypeVector))
+  }
+
+  median_vec=c()
+  lower_percentile_vec=c()
+  upper_percentile_vec=c()
+  kind_df=unique(plot_df[,c("independentVariable", "dependentVariableType")])
+
+  for(i in seq(1,dim(kind_df)[1])){
+    kind=kind_df[i,]
+    if(validDependentVariableTypeVectorInput){
+      now_data_df=subset(plot_df, independentVariable==kind$independentVariable&dependentVariableType==kind$dependentVariableType )
+
+    }else{
+      now_data_df=subset(plot_df, independentVariable==kind$independentVariable )
+
+    }
+
+    nowQuantile=quantile(now_data_df$simulation, probs = c(confidenceLevels[1],0.5,confidenceLevels[2]), na.rm = TRUE)
+
+    lower_percentile_vec=c(lower_percentile_vec,nowQuantile[1])
+    median_vec=c(median_vec,nowQuantile[2])
+    upper_percentile_vec=c(upper_percentile_vec,nowQuantile[3])
+  }
+
+  plot_CI_df=kind_df
+  plot_CI_df$lower_percentile=as.numeric(lower_percentile_vec)
+  plot_CI_df$upper_percentile=as.numeric(upper_percentile_vec)
+  plot_CI_df$median=as.numeric(median_vec)
+
+
+  g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ labs(caption = paste0("solide line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
+
+  if(validDependentVariableTypeVectorInput){
+    g=g+ggplot2::facet_wrap(.~dependentVariableType)
+  }
+  if(ValidobservationVectorInput){
+    g=g+ggplot2::geom_point(data=data.frame(independentVariable=observationIndpendentVariableVector, observation=observationVector, dependentVariableType=observationDependentVariableTypeVector), colour="red", aes(x=independentVariable,y=observation), inherit.aes = FALSE)
+  }
+
+  g=g+ggplot2::ylab("Dependent variable")+ggplot2::xlab("Independent variable")
+
+  return(g)
+}
+
+
