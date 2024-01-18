@@ -9,7 +9,8 @@ table_profileLikelihoodConfidenceInterval(
   alpha = 0.25,
   numBins = NA,
   ParameterNames = NA,
-  ReparameterizationDef = NA
+  ReparameterizationDef = NA,
+  pretty = FALSE
 )
 }
 \arguments{
@@ -22,12 +23,14 @@ table_profileLikelihoodConfidenceInterval(
 \item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)}
 
 \item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax}
+
+\item{pretty}{(default: FALSE) \emph{TRUE or FALSE} if true then the publication ready table will be an output}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 }
 \description{
-Make table of confidence intervals that are approximated from the profile likelihood
+Make table of confidence intervals that are approximated from the profile likelihood. First inspect profile likelihood plot and make sure the plot is smooth and has good enough resolution and the initial range is appropriate. Do not report this table without checking the profile likelihood plot.
 }
 \examples{
 \dontrun{

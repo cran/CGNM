@@ -756,12 +756,13 @@ plot_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterN
 
 #' @title table_profileLikelihoodConfidenceInterval
 #' @description
-#' Make table of confidence intervals that are approximated from the profile likelihood
+#' Make table of confidence intervals that are approximated from the profile likelihood. First inspect profile likelihood plot and make sure the plot is smooth and has good enough resolution and the initial range is appropriate. Do not report this table without checking the profile likelihood plot.
 #' @param logLocation (required input) \emph{A string or a list of strings} of folder directory where CGNM computation log files exist.
 #' @param alpha (default: 0.25) \emph{a number between 0 and 1} level of significance used to derive the confidence interval.
 #' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
 #' @param ParameterNames (default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)
 #' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax
+#' @param pretty (default: FALSE) \emph{TRUE or FALSE} if true then the publication ready table will be an output
 #' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 #' @examples
 #'\dontrun{
@@ -792,7 +793,9 @@ plot_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterN
 #' table_profileLikelihoodConfidenceInterval("CGNM_log")
 #' }
 #' @export
-table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numBins=NA, ParameterNames=NA, ReparameterizationDef=NA){
+table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numBins=NA, ParameterNames=NA, ReparameterizationDef=NA, pretty=FALSE){
+  print("WARNING: ALWAYS first inspect the profile likelihood plot (using plot_profileLikelihood()) and then use this table, DO NOT USE this table by itself.")
+
 
   boundValue=NULL
   individual=NULL
@@ -813,39 +816,97 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
 
   minSSR=min(likelihoodSurfacePlot_df$negative2LogLikelihood)
 
+
   likelihoodSurfacePlot_df$belowSignificance=(likelihoodSurfacePlot_df$negative2LogLikelihood-qchisq(1-alpha,1)-minSSR<0)
+
+  cutOffValue=qchisq(1-alpha,1)+minSSR
 
   paraKind=unique(likelihoodSurfacePlot_df$parameterName)
 
   upperBound_vec=c()
   lowerBound_vec=c()
+  min_vec=c()
+
+  identifiability_vec=c()
+  prettyString_vec=c()
 
   for(para_nu in paraKind){
     dataframe_nu=subset(likelihoodSurfacePlot_df,parameterName==para_nu)
 
+    minIndex=which(dataframe_nu$negative2LogLikelihood==minSSR)
+
+
     upperBoundIndex=which(max(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
     lowerBoundIndex=which(min(dataframe_nu$value[dataframe_nu$belowSignificance])==dataframe_nu$value)
 
+    identifiability="identifiable"
+
+    prettyString=""
+
+    if(length(minIndex)>1){
+      min_vec=c(min_vec, median(dataframe_nu$value[minIndex] ))
+      identifiability="Not identifiable"
+    }else{
+      min_vec=c(min_vec, dataframe_nu$value[minIndex] )
+    }
+
     if(upperBoundIndex==length(dataframe_nu$value)){
       upperBound=paste0(">",dataframe_nu$value[upperBoundIndex])
+      identifiability="Not identifiable"
+      prettyString=paste(prettyString,paste0(">",signif(dataframe_nu$value[upperBoundIndex],2),")"))
+
     }else{
-      upperBound=(dataframe_nu$value[upperBoundIndex]+dataframe_nu$value[upperBoundIndex+1])/2
+
+      diffValue=(dataframe_nu$value[upperBoundIndex]-dataframe_nu$value[upperBoundIndex+1])/(dataframe_nu$negative2LogLikelihood[upperBoundIndex]-dataframe_nu$negative2LogLikelihood[upperBoundIndex+1])*(cutOffValue-dataframe_nu$negative2LogLikelihood[upperBoundIndex])
+      upperBound=dataframe_nu$value[upperBoundIndex]+diffValue
+
+#      upperBound=(dataframe_nu$value[upperBoundIndex]+dataframe_nu$value[upperBoundIndex+1])/2
+      prettyString=paste(prettyString,paste0(signif(upperBound,2),"]"))
     }
 
     if(lowerBoundIndex==1){
       lowerBound=paste0("<",dataframe_nu$value[lowerBoundIndex])
+      identifiability="Not identifiable"
+
+      prettyString=paste(paste0("(<",signif(dataframe_nu$value[lowerBoundIndex],2),","), prettyString)
+
     }else{
-      lowerBound=(dataframe_nu$value[lowerBoundIndex]+dataframe_nu$value[lowerBoundIndex-1])/2
+
+      diffValue=(dataframe_nu$value[lowerBoundIndex]-dataframe_nu$value[lowerBoundIndex-1])/(dataframe_nu$negative2LogLikelihood[lowerBoundIndex]-dataframe_nu$negative2LogLikelihood[lowerBoundIndex-1])*(cutOffValue-dataframe_nu$negative2LogLikelihood[lowerBoundIndex])
+      lowerBound=dataframe_nu$value[lowerBoundIndex]+diffValue
+#      lowerBound=(dataframe_nu$value[lowerBoundIndex]+dataframe_nu$value[lowerBoundIndex-1])/2
+
+      prettyString=paste(paste0("[",signif(lowerBound,2),","), prettyString)
+
     }
 
     upperBound_vec=c(upperBound_vec,upperBound)
     lowerBound_vec=c(lowerBound_vec,lowerBound)
+    prettyString_vec=c(prettyString_vec,prettyString)
+
+    identifiability_vec=c(identifiability_vec,identifiability)
   }
 
-  out_df=data.frame(parameterName=paraKind,CI_lower=lowerBound_vec,CI_upper=upperBound_vec)
 
-  names(out_df)=c("Parameter Name", paste(alpha*100,"percentile"), paste((1-alpha)*100,"percentile"))
-  return(out_df)
+
+  out_df=data.frame(parameterName=paraKind,CI_lower=lowerBound_vec,best=min_vec,CI_upper=upperBound_vec, parameter_identifiability=identifiability_vec)
+
+
+
+  out_df[out_df$parameter_identifiability=="Not identifiable","best"]=NA
+
+
+  pretty_df=data.frame(parameterName=paraKind,value=paste(signif(as.numeric(out_df$best), digits = 3), prettyString_vec), parameter_identifiability=identifiability_vec)
+
+  names(pretty_df)=c("", paste0("best-fit [",alpha*100,"percentile, ", (1-alpha)*100,"percentile ]"),"identifiability")
+
+  names(out_df)=c("", paste(alpha*100,"percentile"), "best-fit", paste((1-alpha)*100,"percentile"),"identifiability")
+
+  if(pretty){
+    return(pretty_df)
+  }else{
+    return(out_df)
+  }
 }
 
 #' @title plot_SSRsurface
@@ -946,7 +1007,7 @@ plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBi
   if(profile_likelihood){
     g=g+ggplot2::facet_wrap(.~parameterName,scales = "free_x")+ggplot2::ylab("-2log likelihood")+ggplot2::xlab("Parameter Value")
     g=g+ggplot2::geom_hline(yintercept = qchisq(1-alpha,1)+min(likelihoodSurfacePlot_df$negative2LogLikelihood), colour="grey")+
-      labs(caption = paste0("Horizontal grey line is the threshold for confidence intervals corresponding to a confidence level of ",(1-alpha)*100,"%."))
+      ggplot2::labs(caption = paste0("Horizontal grey line is the threshold for confidence intervals corresponding to a confidence level of ",(1-alpha)*100,"%."))
   }else{
     g=g+ggplot2::facet_wrap(.~parameterName,scales = "free_x")+ggplot2::ylab("SSR")+ggplot2::xlab("Parameter Value")
 
@@ -1079,9 +1140,9 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
 
         if(checkNL){
           print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
-          if(!identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
-            warning(paste0("the nonlinear function used in this log in ",getwd(),"/",DirectoryName," is not the same as ",getwd(),"/",DirectoryName_vec[1]))
-          }
+         # if(!identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
+         #   warning(paste0("the nonlinear function used in this log in ",getwd(),"/",DirectoryName," is not the same as ",getwd(),"/",DirectoryName_vec[1]))
+         # }
           checkNL=FALSE
         }
 
@@ -1289,16 +1350,15 @@ plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=
     z_value=as.numeric((neg2likelihood_vec-min(neg2likelihood_vec)-qchisq(0.95,1))<0)
   }
 
-  if(!is.na(plotMax)){
-    X_val=X_val[z_value<plotMax,]
-    SSR_vec=SSR_vec[z_value<plotMax]
-  }
-
-
 
   n2likelihood=preppedDataset_list$negative2LogLikelihood
 
-  useIndex=(n2likelihood-min(n2likelihood))<qchisq(1-alpha,2)
+  if(!is.na(plotMax)){
+    useIndex=(((n2likelihood-min(n2likelihood))<qchisq(1-alpha,2))&(z_value<plotMax))
+  }else{
+    useIndex=((n2likelihood-min(n2likelihood))<qchisq(1-alpha,2))
+  }
+
 
   X_val=X_val[useIndex,]
 
@@ -1802,7 +1862,7 @@ bestApproximateMinimizers=function(CGNM_result, numParameterSet=1,ParameterNames
 
 #' @title plot_goodnessOfFit
 #' @description
-#' Make goodness of fit plots to assess the model-fit and bias in residual distribution.\cr\cr
+#' Make goodness of fit plots to assess the model-fit and bias in residual distribution. The linear model is fit to the residual and plotted using geom_smooth(method=lm) in ggplot.\cr\cr
 #' Explanation of the terminologies in terms of PBPK model fitting to the time-course drug concentration measurements:
 #' \cr "independent variable" is time
 #' \cr "dependent variable" is the concentration.
@@ -1942,9 +2002,9 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
     p=p+ggplot2::geom_smooth(method = lm)
     p=p+ggplot2::xlab("Dependent Variable (simulation)")
     if(absResidual){
-      p=p+ggplot2::ylab("Residual")
+      p=p+ggplot2::ylab("Residual (absolute value)")
     }else{
-      p=p+ggplot2::ylab("Residual (absolute value")
+      p=p+ggplot2::ylab("Residual")
     }
 
     if(!is.na(dependentVariableTypeVector[1])){
@@ -1957,9 +2017,9 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
     p=p+ggplot2::geom_smooth(method = lm)
     p=p+ggplot2::xlab("Dependent Variable (target)")
     if(absResidual){
-      p=p+ggplot2::ylab("Residual")
+      p=p+ggplot2::ylab("Residual (absolute value)")
     }else{
-      p=p+ggplot2::ylab("Residual (absolute value")
+      p=p+ggplot2::ylab("Residual")
     }
     if(!is.na(dependentVariableTypeVector[1])){
       p=p+ggplot2::facet_grid(.~dependent_variable_type, scales = "free")
@@ -1971,9 +2031,9 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
     if(is.na(independentVariableVector_in[1])){
       p<-ggplot2::ggplot(residualPlot_df,ggplot2::aes(x=residual))+ggplot2::geom_histogram()
       if(absResidual){
-        p=p+ggplot2::xlab("Residual")
+        p=p+ggplot2::xlab("Residual (absolute value)")
       }else{
-        p=p+ggplot2::xlab("Residual (absolute value")
+        p=p+ggplot2::xlab("Residual")
       }
 
       if(!is.na(dependentVariableTypeVector[1])){
@@ -1984,9 +2044,9 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
       p=p+ggplot2::geom_smooth(method = lm)
       p=p+ggplot2::xlab("Independent Variable")
       if(absResidual){
-        p=p+ggplot2::ylab("Residual")
+        p=p+ggplot2::ylab("Residual (absolute value)")
       }else{
-        p=p+ggplot2::ylab("Residual (absolute value")
+        p=p+ggplot2::ylab("Residual")
       }
       if(!is.na(dependentVariableTypeVector[1])){
         p=p+ggplot2::facet_grid(.~dependent_variable_type, scales = "free")
@@ -2581,7 +2641,7 @@ plot_simulationWithCI=function(simulationFunction, parameter_matrix,  independen
   plot_CI_df$median=as.numeric(median_vec)
 
 
-  g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ labs(caption = paste0("solide line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
+  g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ ggplot2::labs(caption = paste0("solide line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
 
  if(validDependentVariableTypeVectorInput){
    g=g+ggplot2::facet_wrap(.~dependentVariableType)
@@ -2740,7 +2800,7 @@ plot_simulationMatrixWithCI=function(simulationMatrix,  independentVariableVecto
   plot_CI_df$median=as.numeric(median_vec)
 
 
-  g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ labs(caption = paste0("solide line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
+  g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ ggplot2::labs(caption = paste0("solide line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
 
   if(validDependentVariableTypeVectorInput){
     g=g+ggplot2::facet_wrap(.~dependentVariableType)

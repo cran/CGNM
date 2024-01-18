@@ -7,6 +7,7 @@
 Cluster_Gauss_Newton_Bootstrap_method(
   CGNM_result,
   nonlinearFunction,
+  ...,
   num_bootstrapSample = 200,
   indicesToUseAsInitialIterates = NA
 )
@@ -15,6 +16,8 @@ Cluster_Gauss_Newton_Bootstrap_method(
 \item{CGNM_result}{(required input) \emph{A list} stores the computational result from Cluster_Gauss_Newton_method() function in CGNM package.}
 
 \item{nonlinearFunction}{(required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous).}
+
+\item{...}{Further arguments to be supplied to nonlinearFunction}
 
 \item{num_bootstrapSample}{(default: 200) \emph{A positive integer} number of bootstrap samples to generate.}
 

@@ -6,6 +6,7 @@
 \usage{
 Cluster_Gauss_Newton_method(
   nonlinearFunction,
+  ...,
   targetVector,
   initial_lowerRange,
   initial_upperRange,
@@ -28,6 +29,8 @@ Cluster_Gauss_Newton_method(
 }
 \arguments{
 \item{nonlinearFunction}{(required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous). Also this function can be matrix to matrix equation.  This can be used for parallerization, see vignettes for examples.}
+
+\item{...}{Further arguments to be supplied to nonlinearFunction}
 
 \item{targetVector}{(required input) \emph{A vector of real number of length m} where we minimize the Euclidean distance between the nonlinearFuncition and targetVector.  In the context of curve fitting targetVector can be though as \strong{the observational data}.}
 

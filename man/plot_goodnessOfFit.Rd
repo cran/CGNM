@@ -30,7 +30,7 @@ plot_goodnessOfFit(
 \emph{A ggplot object} of the goodness of fit plot.
 }
 \description{
-Make goodness of fit plots to assess the model-fit and bias in residual distribution.\cr\cr
+Make goodness of fit plots to assess the model-fit and bias in residual distribution. The linear model is fit to the residual and plotted using geom_smooth(method=lm) in ggplot.\cr\cr
 Explanation of the terminologies in terms of PBPK model fitting to the time-course drug concentration measurements:
 \cr "independent variable" is time
 \cr "dependent variable" is the concentration.

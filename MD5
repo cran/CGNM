@@ -1,14 +1,14 @@
-fb113d42c6a69a3a5829cda9dd3308d5 *DESCRIPTION
+956c4ab9183a83747c05b336e400e2a7 *DESCRIPTION
 fb71b44c7869c02d3bdda2bb7f3c747e *LICENSE
 606b2fc52da3c8114e6c0356dffa2d70 *NAMESPACE
-98a2db74cbfcb21be6f965588614f644 *R/Cluster_Gauss_Newton_method.R
-dda992bc5febe315ce88fb879d9dc587 *R/PostProcess.R
+2dba438dadb2f95d55104a7d063f8dc0 *R/Cluster_Gauss_Newton_method.R
+041708eac6bceb0292e9b193bd224547 *R/PostProcess.R
 6b17631151036050606b789b4f709667 *build/vignette.rds
 51a4c894bd6e991161ec9540b577da41 *inst/doc/CGNM-vignette.R
 26d49dca8fa2c2b288cb9fca040043b5 *inst/doc/CGNM-vignette.Rmd
-d77e4ac479cc0bf04b17ac5f329000e7 *inst/doc/CGNM-vignette.html
-56820ef8f1443ebb26ade6c92cd97f3b *man/Cluster_Gauss_Newton_Bootstrap_method.Rd
-53478b4eabe4e752affcaa6f4f6f0a5b *man/Cluster_Gauss_Newton_method.Rd
+c9363e5a515c272ad67c0eeb0315967e *inst/doc/CGNM-vignette.html
+62ae31a610113f711187e2d8d136a7d0 *man/Cluster_Gauss_Newton_Bootstrap_method.Rd
+1e37fe00d83c3e5a32879d73520ef721 *man/Cluster_Gauss_Newton_method.Rd
 97adb288154ec5a373e5806be3eb5820 *man/acceptedApproximateMinimizers.Rd
 ad258658d502cc709f1403fba6af1cfe *man/acceptedIndices.Rd
 625d1d3dd0b47e437f0a4050cd62acaf *man/acceptedIndices_binary.Rd
@@ -18,7 +18,7 @@ f52c2ab8dd0b9e18150dff7bab44bf12 *man/bestApproximateMinimizers.Rd
 da1827dd5f929991175e2cfc32de9eba *man/plot_Rank_SSR.Rd
 cc4b72a76f7994f2285bea6c8664250f *man/plot_SSR_parameterValue.Rd
 34615407f2cbb01b3f50a98507b8e420 *man/plot_SSRsurface.Rd
-51dc07a997aef470da70f9a55db46fbf *man/plot_goodnessOfFit.Rd
+ecffb1a9281b859448d7149d4032aa42 *man/plot_goodnessOfFit.Rd
 3e43f1dacd9618e443804eb908ff3caf *man/plot_paraDistribution_byHistogram.Rd
 c0a0dc0ae02da68afa93bf557dff317b *man/plot_paraDistribution_byViolinPlots.Rd
 1cab87b140bf12c9aee732c5e3bec8b4 *man/plot_parameterValue_scatterPlots.Rd
@@ -28,6 +28,6 @@ b2555c939d0a8cdd7acc41fdac8a2fc1 *man/plot_simulationWithCI.Rd
 7a1b40a73643c43665f2b95ec4ff2d9b *man/suggestInitialLowerRange.Rd
 74c31f73fa3008c8c07f7bf8cee5224a *man/suggestInitialUpperRange.Rd
 c296d82a50edce549cd2e14a458f0484 *man/table_parameterSummary.Rd
-9d7fb1469cdde30ba0b8a524a0dd94c8 *man/table_profileLikelihoodConfidenceInterval.Rd
+4c601c4c98d4ecae73eb89bc8536c15e *man/table_profileLikelihoodConfidenceInterval.Rd
 052d49e84f62fb19a5addd326a7f084d *man/topIndices.Rd
 26d49dca8fa2c2b288cb9fca040043b5 *vignettes/CGNM-vignette.Rmd
