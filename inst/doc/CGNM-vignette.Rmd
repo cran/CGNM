@@ -60,8 +60,7 @@ observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
 ## Run Cluster_Gauss_Newton_method
 Here we have specified the upper and lower range of the initial guess. 
 ```{r, warning = FALSE}
-CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_function,
-targetVector = observation,
+CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_function,targetVector = observation,
 initial_lowerRange =rep(0.01,3),initial_upperRange =  rep(100,3),lowerBound = rep(0,3), saveLog=TRUE, num_minimizersToFind = 500, ParameterNames = c("Ka","V1","CL"))
 ```
 
@@ -131,8 +130,8 @@ plot_2DprofileLikelihood(CGNM_result, showInitialRange=FALSE, alpha = 0.05)+scal
 Cluster Gauss Newton method implementation in CGNM package (above version 0.6) can use nonlinear function that takes multiple input vectors stored in matrix (each column as the input vector) and output matrix (each column as the output vector). This implementation was to be used to parallelize the computation. See below for the examples of parallelized implementation in various hardware.  Cluster Gauss Newton method is embarrassingly parallelizable so the computation speed is almost proportional to the number of computation cores used especially for the nonlinear functions that takes time to compute (e.g. models with numerical method to solve a large system of ODEs).
 
 ```{r}
-model_matrix_function=function(X){
-  Y_list=lapply(split(X, rep(seq(1:nrow(X)),ncol(X))), model_function)
+model_matrix_function=function(x){
+  Y_list=lapply(split(x, rep(seq(1:nrow(x)),ncol(x))), model_function)
   Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
 }
 

@@ -7,9 +7,10 @@
 Cluster_Gauss_Newton_Bootstrap_method(
   CGNM_result,
   nonlinearFunction,
-  ...,
   num_bootstrapSample = 200,
-  indicesToUseAsInitialIterates = NA
+  indicesToUseAsInitialIterates = NA,
+  bootstrapType = 1,
+  ...
 )
 }
 \arguments{
@@ -17,11 +18,13 @@ Cluster_Gauss_Newton_Bootstrap_method(
 
 \item{nonlinearFunction}{(required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous).}
 
-\item{...}{Further arguments to be supplied to nonlinearFunction}
-
 \item{num_bootstrapSample}{(default: 200) \emph{A positive integer} number of bootstrap samples to generate.}
 
 \item{indicesToUseAsInitialIterates}{(default: NA) \emph{A vector of integers} indices to use for initial iterate of the bootstrap analyses.  For CGNM bootstrap, we use the parameters found by CGNM as the initial iterates, here you can manually spccify which of the approximate minimizers that was found by CGNM (where the CGNM computation result is given as CGNM_result file) to use as initial iterates.  (if NA, use indices chosen by the acceptedIndices() function with default setting).}
+
+\item{bootstrapType}{(default:1) \emph{1 or 2} 1: residual resampling bootstrap method, 2: case sampling bootstrap method}
+
+\item{...}{Further arguments to be supplied to nonlinearFunction}
 }
 \value{
 list of a matrix X, Y,residual_history, initialX, bootstrapX, bootstrapY as well as a list runSetting.

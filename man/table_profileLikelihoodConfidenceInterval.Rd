@@ -10,7 +10,8 @@ table_profileLikelihoodConfidenceInterval(
   numBins = NA,
   ParameterNames = NA,
   ReparameterizationDef = NA,
-  pretty = FALSE
+  pretty = FALSE,
+  Likelihood_function = Residual_function_def
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ table_profileLikelihoodConfidenceInterval(
 \item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax}
 
 \item{pretty}{(default: FALSE) \emph{TRUE or FALSE} if true then the publication ready table will be an output}
+
+\item{Likelihood_function}{(default: Residual_function_def) \emph{a function} that takes CGNM_result and initial then to calculate a quantity to be sketched in logscale e.g. SSR) this was implemented to conduct pos hoc drawing of the profile likelihood by providing the new definition of likelihood after all CGNM calculations are done.}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.

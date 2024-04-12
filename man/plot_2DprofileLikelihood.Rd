@@ -14,7 +14,8 @@ plot_2DprofileLikelihood(
   ReparameterizationDef = NA,
   numBins = NA,
   showInitialRange = TRUE,
-  alpha = 0.25
+  alpha = 0.25,
+  Likelihood_function = Residual_function_def
 )
 }
 \arguments{
@@ -37,6 +38,8 @@ plot_2DprofileLikelihood(
 \item{showInitialRange}{(default: TRUE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
 
 \item{alpha}{(default: 0.25) \emph{a number between 0 and 1} level of significance (all the points outside of this significance level will not be plotted when plot tyoe 1,2 or 4 are chosen).}
+
+\item{Likelihood_function}{(default: Residual_function_def) \emph{a function} that takes CGNM_result and initial then to calculate a quantity to be sketched in logscale e.g. SSR) this was implemented to conduct pos hoc drawing of the profile likelihood by providing the new definition of likelihood after all CGNM calculations are done.}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.

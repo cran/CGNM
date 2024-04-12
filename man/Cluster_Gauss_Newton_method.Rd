@@ -6,7 +6,6 @@
 \usage{
 Cluster_Gauss_Newton_method(
   nonlinearFunction,
-  ...,
   targetVector,
   initial_lowerRange,
   initial_upperRange,
@@ -24,13 +23,13 @@ Cluster_Gauss_Newton_method(
   algorithmVersion = 3,
   initialIterateMatrix = NA,
   targetMatrix = NA,
-  keepInitialDistribution = NA
+  weightMatrix = NA,
+  keepInitialDistribution = NA,
+  ...
 )
 }
 \arguments{
 \item{nonlinearFunction}{(required input) \emph{A function with input of a vector x of real number of length n and output a vector y of real number of length m.} In the context of model fitting the nonlinearFunction is \strong{the model}.  Given the CGNM does not assume the uniqueness of the minimizer, m can be less than n.  Also CGNM does not assume any particular form of the nonlinear function and also does not require the function to be continuously differentiable (see Appendix D of our publication for an example when this function is discontinuous). Also this function can be matrix to matrix equation.  This can be used for parallerization, see vignettes for examples.}
-
-\item{...}{Further arguments to be supplied to nonlinearFunction}
 
 \item{targetVector}{(required input) \emph{A vector of real number of length m} where we minimize the Euclidean distance between the nonlinearFuncition and targetVector.  In the context of curve fitting targetVector can be though as \strong{the observational data}.}
 
@@ -66,7 +65,11 @@ Cluster_Gauss_Newton_method(
 
 \item{targetMatrix}{(default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple target vectors in the matrix form.  This input is mainly used when running bootstrap method and not intended to be used for other purposes.}
 
+\item{weightMatrix}{(default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple weight vectors in the matrix form to weight the observations.  This input is mainly used when running case sampling bootstrap method and not intended to be used for other purposes.}
+
 \item{keepInitialDistribution}{(default: NA) \emph{A vector of TRUE or FALSE} of length n User can specify if the initial distribution of one of the input variable (e.g. parameter) to be kept as the initial iterate throughout CGNM iterations.}
+
+\item{...}{Further arguments to be supplied to nonlinearFunction}
 }
 \value{
 list of a matrix X, Y,residual_history and initialX, as well as a list runSetting

@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -29,9 +29,8 @@ model_function=function(x){
 ## -----------------------------------------------------------------------------
 observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
 
-## ---- warning = FALSE---------------------------------------------------------
-CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_function,
-targetVector = observation,
+## ----warning = FALSE----------------------------------------------------------
+CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction=model_function,targetVector = observation,
 initial_lowerRange =rep(0.01,3),initial_upperRange =  rep(100,3),lowerBound = rep(0,3), saveLog=TRUE, num_minimizersToFind = 500, ParameterNames = c("Ka","V1","CL"))
 
 ## -----------------------------------------------------------------------------
@@ -49,30 +48,30 @@ kable(table_parameterSummary(CGNM_bootstrap))
 ## -----------------------------------------------------------------------------
 library(ggplot2)
 
-## ---- fig.width=6, fig.height=3.5---------------------------------------------
+## ----fig.width=6, fig.height=3.5----------------------------------------------
 plot_Rank_SSR(CGNM_result)
 
-## ---- fig.width=6, fig.height=3.5---------------------------------------------
+## ----fig.width=6, fig.height=3.5----------------------------------------------
 plot_paraDistribution_byHistogram(CGNM_bootstrap, bins = 50)+scale_x_continuous(trans="log10")
 
-## ---- fig.width = 7-----------------------------------------------------------
+## ----fig.width = 7------------------------------------------------------------
 plot_goodnessOfFit(CGNM_result, plotType = 1, independentVariableVector = c(0.1,0.2,0.4,0.6,1,2,3,6,12), plotRank = seq(1,50))
 
-## ---- fig.width = 7-----------------------------------------------------------
+## ----fig.width = 7------------------------------------------------------------
 plot_goodnessOfFit(CGNM_bootstrap, plotType = 1, independentVariableVector = c(0.1,0.2,0.4,0.6,1,2,3,6,12))
 
-## ---- fig.width = 7-----------------------------------------------------------
+## ----fig.width = 7------------------------------------------------------------
 plot_profileLikelihood(c("CGNM_log","CGNM_log_bootstrap"))+scale_x_continuous(trans="log10")
 
 ## -----------------------------------------------------------------------------
 kable(table_profileLikelihoodConfidenceInterval(c("CGNM_log","CGNM_log_bootstrap"), alpha = 0.25))
 
-## ---- fig.width = 7, fig.height = 6-------------------------------------------
+## ----fig.width = 7, fig.height = 6--------------------------------------------
 plot_2DprofileLikelihood(CGNM_result, showInitialRange=FALSE, alpha = 0.05)+scale_x_continuous(trans="log10")+scale_y_continuous(trans="log10")
 
 ## -----------------------------------------------------------------------------
-model_matrix_function=function(X){
-  Y_list=lapply(split(X, rep(seq(1:nrow(X)),ncol(X))), model_function)
+model_matrix_function=function(x){
+  Y_list=lapply(split(x, rep(seq(1:nrow(x)),ncol(x))), model_function)
   Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
 }
 
