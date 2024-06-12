@@ -158,6 +158,9 @@ ui <- function(req) {
         h4(
           "Lower_bound and Upper_bound are optional so can be left empty.  All table entries needs to be numerical values."
         ),
+        h4(
+          "VaryByID=0: all individials share the same parameter, VaryByID=1: each individiaul has its own parameter."
+        ),
         fileInput("para_csv", "You can import parameter information from a csv file by uploarding it below:"),
         h6("Parameter information csv file should contain the following columns: ParameterName, Initial_lower_range, Initial_upper_range, Lower_bound, Upper_bound, and Unit. Only the rows with relevant ParameterName to the current model will be read in."),
         downloadButton('download_para_csv',"Download parameter information as csv file"),
@@ -176,6 +179,7 @@ ui <- function(req) {
           step = 1
         ),
         DTOutput("ObservedData_dt"),
+        h4("ResidualError_model: 0 additive model (default), 1 proportional model."),
         fileInput("obs_csv", "You can import observation data from a csv file by uploarding it below:"),
         h6("Observation csv file should contain the following columns: ID, time, Observation_expression, Observed_value, and Memo."),
         downloadButton('download_obs_csv',"Download observation as csv file"),

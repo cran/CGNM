@@ -25,6 +25,8 @@ Cluster_Gauss_Newton_method(
   targetMatrix = NA,
   weightMatrix = NA,
   keepInitialDistribution = NA,
+  MO_weights = NA,
+  MO_values = NA,
   ...
 )
 }
@@ -68,6 +70,10 @@ Cluster_Gauss_Newton_method(
 \item{weightMatrix}{(default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple weight vectors in the matrix form to weight the observations.  This input is mainly used when running case sampling bootstrap method and not intended to be used for other purposes.}
 
 \item{keepInitialDistribution}{(default: NA) \emph{A vector of TRUE or FALSE} of length n User can specify if the initial distribution of one of the input variable (e.g. parameter) to be kept as the initial iterate throughout CGNM iterations.}
+
+\item{MO_weights}{(default: NA) \emph{A numeric vector} where the weights for the middle out methods are specified.  The length of the vector should be the same as the number of parameters. MO can be used to incoperate prior knowledge of the parameter to be estimated, weight indicate an arbitrary confidence for the prior information. (MO method is still under methodological development.)}
+
+\item{MO_values}{(default: NA) \emph{A numeric vector} where the values for the middle out methods are specified.  The length of the vector should be the same as the number of parameters. MO can be used to incoperate prior knowledge of the parameter to be estimated. (MO method is still under methodological development.)}
 
 \item{...}{Further arguments to be supplied to nonlinearFunction}
 }

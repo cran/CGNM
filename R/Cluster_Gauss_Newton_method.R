@@ -32,49 +32,67 @@ col_normalize=function(data_in){
   return(out)
 }
 
-
-
-
 col_sd=function(data_in){
-  out=c()
-  for(i in seq(1,dim(data_in)[2])){
-    out=c(out,sd(data_in[,i],na.rm = TRUE))
-  }
+  # out=c()
+  # for(i in seq(1,dim(data_in)[2])){
+  #   out=c(out,sd(data_in[,i],na.rm = TRUE))
+  # }
+  out=apply(data_in, 2, sd, na.rm=TRUE)
+
   return(out)
 }
 
 col_max=function(data_in){
-  out=c()
-  for(i in seq(1,dim(data_in)[2])){
-    out=c(out,max(data_in[,i],na.rm = TRUE))
-  }
+  # out=c()
+  # for(i in seq(1,dim(data_in)[2])){
+  #   out=c(out,max(data_in[,i],na.rm = TRUE))
+  # }
+  out=apply(data_in, 2, max, na.rm=TRUE)
+
   return(out)
 }
 
 col_min=function(data_in){
-  out=c()
-  for(i in seq(1,dim(data_in)[2])){
-    out=c(out,min(data_in[,i],na.rm = TRUE))
-  }
+  # out=c()
+  # for(i in seq(1,dim(data_in)[2])){
+  #   out=c(out,min(data_in[,i],na.rm = TRUE))
+  # }
+  out=apply(data_in, 2, min, na.rm=TRUE)
+
   return(out)
 }
 
 col_mean=function(data_in){
-  out=c()
-  for(i in seq(1,dim(data_in)[2])){
-    out=c(out,mean(data_in[,i],na.rm = TRUE))
-  }
+  # out=c()
+  # for(i in seq(1,dim(data_in)[2])){
+  #   out=c(out,mean(data_in[,i],na.rm = TRUE))
+  # }
+
+  out=apply(data_in, 2, mean, na.rm=TRUE)
+
   return(out)
 }
 
 col_median=function(data_in){
-  out=c()
-  for(i in seq(1,dim(data_in)[2])){
-    out=c(out,median(data_in[,i],na.rm = TRUE))
-  }
+  # out=c()
+  # for(i in seq(1,dim(data_in)[2])){
+  #   out=c(out,median(data_in[,i],na.rm = TRUE))
+  # }
+  #
+  out=apply(data_in, 2, median, na.rm=TRUE)
   return(out)
 }
 
+
+col_quantile=function(data_in, prob){
+  # out=c()
+  # for(i in seq(1,dim(data_in)[2])){
+  #   out=c(out,as.numeric(quantile(data_in[,i],na.rm = TRUE, prob=prob)))
+  # }
+  out=apply(data_in, 2, quantile, prob=prob, na.rm=TRUE)
+
+  return(out)
+}
 
 #' @title col_quantile
 #' @description
@@ -356,6 +374,8 @@ CGNM_input_test <- function(nonlinearFunction,  targetVector, initial_lowerRange
 #' @param targetMatrix (default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple target vectors in the matrix form.  This input is mainly used when running bootstrap method and not intended to be used for other purposes.
 #' @param keepInitialDistribution (default: NA) \emph{A vector of TRUE or FALSE} of length n User can specify if the initial distribution of one of the input variable (e.g. parameter) to be kept as the initial iterate throughout CGNM iterations.
 #' @param weightMatrix (default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple weight vectors in the matrix form to weight the observations.  This input is mainly used when running case sampling bootstrap method and not intended to be used for other purposes.
+#' @param MO_weights (default: NA) \emph{A numeric vector} where the weights for the middle out methods are specified.  The length of the vector should be the same as the number of parameters. MO can be used to incoperate prior knowledge of the parameter to be estimated, weight indicate an arbitrary confidence for the prior information. (MO method is still under methodological development.)
+#' @param MO_values (default: NA) \emph{A numeric vector} where the values for the middle out methods are specified.  The length of the vector should be the same as the number of parameters. MO can be used to incoperate prior knowledge of the parameter to be estimated. (MO method is still under methodological development.)
 #' @param ... Further arguments to be supplied to nonlinearFunction
 #' @return list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
 #' \enumerate{\item X: \emph{a num_minimizersToFind by n matrix} which stores the approximate minimizers of the nonlinear least squares in each row. In the context of model fitting they are \strong{the estimated parameter sets}.
@@ -423,7 +443,24 @@ CGNM_input_test <- function(nonlinearFunction,  targetVector, initial_lowerRange
 #'
 #' @export
 #' @import stats MASS
-Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_lowerRange, initial_upperRange , lowerBound=NA, upperBound=NA, ParameterNames=NA, stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=TRUE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, weightMatrix=NA, keepInitialDistribution=NA, ... ){
+Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_lowerRange, initial_upperRange , lowerBound=NA, upperBound=NA, ParameterNames=NA, stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=TRUE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, weightMatrix=NA, keepInitialDistribution=NA, MO_weights=NA, MO_values=NA,... ){
+  MO_weights_in=MO_weights
+  MO_values_in=MO_values
+
+  saveFolderName="CGNM_log"
+  if(runName=="TIME"){
+    runName=as.character( Sys.time())
+    runSetting$runName=runName
+  }
+
+  if(runName!=""){
+    saveFolderName=paste0(saveFolderName,"_",runName)
+  }
+
+  if(saveLog){
+    dir.create(saveFolderName)
+  }
+
 
   if(length(lowerBound)==1&is.na(lowerBound)[1]){
     lowerBound=rep(NA, length(initial_lowerRange))
@@ -433,11 +470,47 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_
     upperBound=rep(NA, length(initial_upperRange))
   }
 
-  if(!(length(initial_lowerRange)==length(initial_upperRange) & length(lowerBound)==length(upperBound)&length(initial_upperRange)==length(lowerBound))){
-    stop("length of initial_lowerRange, initial_upperRange, lowerBound, upperBound must be the same")
+  if(length(MO_weights)==1&is.na(MO_weights)[1]){
+    MO_weights=rep(0, length(initial_lowerRange))
+    MO_values=(initial_lowerRange+initial_upperRange)/2
+  }
+
+  if(!( length(initial_lowerRange)==length(initial_upperRange))){
+    stop("length of initial_lowerRange, initial_upperRange must be the same")
+  }
+
+  if(!(length(lowerBound)==length(upperBound)&length(initial_upperRange)==length(lowerBound))){
+    stop("length of lowerBound, upperBound must be the same as initial_lowerRange")
+  }
+
+  if(!(length(initial_lowerRange)==length(MO_weights) & length(initial_lowerRange)==length(MO_values) )){
+    stop("length of MO_weights, MO_values must be the same as initial_lowerRange")
   }
 
   length_paraVector=length(initial_lowerRange)
+
+
+  if(!is.numeric(MO_weights)|sum(is.na(MO_weights))>0){
+    stop("MO_weights needs to be numeric.")
+  }
+
+  MO_index=(MO_weights!=0)
+
+  if(!is.numeric(MO_values[MO_index])|sum(is.na(MO_values[MO_index]))>0){
+    stop("MO_values where the weights are non-zero must be numeric.")
+
+  }
+
+  validIndex=MO_index
+  if((sum(MO_values[validIndex]>initial_lowerRange[validIndex])!=sum(validIndex))){
+    stop("MO_values must be STRICTRY larger than initial lower range")
+  }
+
+  if((sum(MO_values[validIndex]<initial_upperRange[validIndex])!=sum(validIndex))){
+    stop("MO_values must be STRICTRY smaller than initial upper range")
+  }
+
+  MO_values[!MO_index]=(initial_upperRange[!MO_index]+initial_lowerRange[!MO_index])/2
 
   validIndex=!is.na(lowerBound)
   if((sum(initial_lowerRange[validIndex]>lowerBound[validIndex])!=sum(validIndex))){
@@ -449,6 +522,7 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_
     stop("Initial upper range must be STRICTRY less than upper BOUND")
   }
 
+
   if(is.na(ParameterNames)[1]){
     ParameterNames=paste0("theta_",seq(1,length_paraVector))
   }
@@ -458,6 +532,10 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_
   LB_index=(!is.na(as.numeric(lowerBound)))&is.na(upperBound)
   UB_index=(!is.na(as.numeric(upperBound)))&is.na(lowerBound)
   BB_index=(!is.na(as.numeric(lowerBound)))&(!is.na(as.numeric(upperBound)))
+
+  if(sum(LB_index)+sum(UB_index)+sum(BB_index)>0){
+    message(paste(paste(c(ParameterNames[LB_index],ParameterNames[UB_index],ParameterNames[BB_index]), collapse = ", "),"will be transformed internally to impose boundaries. See CGNM_result$runSetting$ReparameterizationDef for exact transformation. Transformed parameters are denoted as x and untransformed parameters are denoted as theta."))
+  }
 
   LB_paraReDef=paste0("exp(x",seq(1,length(lowerBound)),")+",lowerBound)
   UB_paraReDef=paste0(upperBound,"-exp(x",seq(1,length(lowerBound)),")")
@@ -477,6 +555,13 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_
   X_UR[UB_index]=log(-initial_upperRange[UB_index]+upperBound[UB_index])
   X_UR[BB_index]=log((initial_upperRange[BB_index]-lowerBound[BB_index])/(upperBound[BB_index]-initial_upperRange[BB_index]))
 
+
+  MO_val_converted=MO_values
+  MO_val_converted[LB_index]=log(MO_val_converted[LB_index]-lowerBound[LB_index])
+  MO_val_converted[UB_index]=log(-MO_val_converted[UB_index]+upperBound[UB_index])
+  MO_val_converted[BB_index]=log((MO_val_converted[BB_index]-lowerBound[BB_index])/(upperBound[BB_index]-MO_val_converted[BB_index]))
+
+
   if(!is.na(initialIterateMatrix)[1]){
     originalInit=initialIterateMatrix
     rowNumInitMatrix=dim(initialIterateMatrix)[1]
@@ -489,27 +574,107 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_
   lowerBoundMatrix=repmat(lowerBound[BB_index],numrows = num_minimizersToFind ,numcol = 1)
   upperBoundMatrix=repmat(upperBound[BB_index],numrows = num_minimizersToFind ,numcol = 1)
 
-  nonlinearFunction_varTrans=function(x, ... ){
+  if(sum(abs(MO_weights))>0){
+    nonlinearFunction_varTrans=function(x, ... ){
 
-    if(is.vector(x)){
-      theta=x
-      theta[LB_index]=exp(x[LB_index])-lowerBound[LB_index]
-      theta[UB_index]=-exp(x[UB_index])+upperBound[UB_index]
-      theta[BB_index]=(upperBound[BB_index]-lowerBound[BB_index])*(exp(x[BB_index])/(exp(x[BB_index])+1))+lowerBound[BB_index]
+      if(is.vector(x)){
+        theta=x
+        theta[LB_index]=exp(x[LB_index])-lowerBound[LB_index]
+        theta[UB_index]=-exp(x[UB_index])+upperBound[UB_index]
+        theta[BB_index]=(upperBound[BB_index]-lowerBound[BB_index])*(exp(x[BB_index])/(exp(x[BB_index])+1))+lowerBound[BB_index]
+        out=c(nonlinearFunction(theta, ... ),x[MO_index])
 
-    }else{
-      theta=x
+      }else{
+        theta=x
 
-      theta[,LB_index]=exp(x[,LB_index])-repmat(lowerBound[LB_index],numrows = dim(x)[1] ,numcol = 1)
-      theta[,UB_index]=-exp(x[,UB_index])+repmat(upperBound[UB_index],numrows = dim(x)[1] ,numcol = 1)
-      theta[,BB_index]=(upperBoundMatrix-lowerBoundMatrix)[seq(1,dim(x)[1]),]*(exp(x[,BB_index])/(exp(x[,BB_index])+1))+lowerBoundMatrix[seq(1,dim(x)[1]),]
+        theta[,LB_index]=exp(x[,LB_index])-repmat(lowerBound[LB_index],numrows = dim(x)[1] ,numcol = 1)
+        theta[,UB_index]=-exp(x[,UB_index])+repmat(upperBound[UB_index],numrows = dim(x)[1] ,numcol = 1)
+        theta[,BB_index]=(upperBoundMatrix-lowerBoundMatrix)[seq(1,dim(x)[1]),]*(exp(x[,BB_index])/(exp(x[,BB_index])+1))+lowerBoundMatrix[seq(1,dim(x)[1]),]
+
+        out=cbind(nonlinearFunction(theta, ... ),x[,MO_index]-MO_val_converted[MO_index])
+
+      }
+      return(out)
+
     }
+    targetVector=c(targetVector, rep(0,sum(MO_index)))
 
-    nonlinearFunction(theta, ... )
+  }else{
+    nonlinearFunction_varTrans=function(x, ... ){
+
+      if(is.vector(x)){
+        theta=x
+        theta[LB_index]=exp(x[LB_index])-lowerBound[LB_index]
+        theta[UB_index]=-exp(x[UB_index])+upperBound[UB_index]
+        theta[BB_index]=(upperBound[BB_index]-lowerBound[BB_index])*(exp(x[BB_index])/(exp(x[BB_index])+1))+lowerBound[BB_index]
+
+      }else{
+        theta=x
+
+        theta[,LB_index]=exp(x[,LB_index])-repmat(lowerBound[LB_index],numrows = dim(x)[1] ,numcol = 1)
+        theta[,UB_index]=-exp(x[,UB_index])+repmat(upperBound[UB_index],numrows = dim(x)[1] ,numcol = 1)
+        theta[,BB_index]=(upperBoundMatrix-lowerBoundMatrix)[seq(1,dim(x)[1]),]*(exp(x[,BB_index])/(exp(x[,BB_index])+1))+lowerBoundMatrix[seq(1,dim(x)[1]),]
+      }
+
+      nonlinearFunction(theta, ... )
+    }
+  }
+
+
+  textMemo=paste0("CGNM algorithm version ",algorithmVersion,"\n\n",textMemo)
+  runSetting_list=list(nonlinearFunction=nonlinearFunction,
+                       targetVector=targetVector,
+                       initial_lowerRange=initial_lowerRange,
+                       initial_upperRange=initial_upperRange,
+                       stayIn_initialRange=stayIn_initialRange,
+                       algorithmParameter_initialLambda=algorithmParameter_initialLambda,
+                       algorithmParameter_gamma=algorithmParameter_gamma,
+                       num_minimizersToFind=num_minimizersToFind,
+                       num_iteration=num_iteration,
+                       saveLog=saveLog,
+                       runName=runName,
+                       textMemo=textMemo,
+                       algorithmVersion=algorithmVersion,
+                       initialIterateMatrix=initialIterateMatrix,
+                       targetMatrix=targetMatrix,
+                       ParameterNames=ParameterNames,
+                       ReparameterizationDef=ReparameterizationDef,
+                       lowerBound=lowerBound,
+                       upperBound=upperBound,
+                       weightMatrix=weightMatrix,
+                       keepInitialDistribution=keepInitialDistribution,
+                       targetMatrix=targetMatrix,
+                       MO_weights=MO_weights_in,
+                       MO_values=MO_values_in)
+
+
+  if(saveLog){
+    save(file=paste0(saveFolderName,'/runSetting_list.RDATA'), runSetting_list)
   }
 
 
   out=Cluster_Gauss_Newton_method_core(nonlinearFunction_varTrans, targetVector=targetVector, initial_lowerRange=X_LR, initial_upperRange=X_UR ,lowerBound=lowerBound, upperBound=upperBound, stayIn_initialRange, num_minimizersToFind, num_iteration, saveLog, runName, textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix, targetMatrix, keepInitialDistribution, weightMatrix,ParameterNames,ReparameterizationDef, ... )
+
+  out_X=as.data.frame(out$X)
+  names(out_X)=paste0("x",seq(1,dim(out_X)[2]))
+
+  Theta=as.data.frame(matrix(NA,nrow = dim(out_X)[1], ncol = length(ParameterNames)))
+  names(Theta)=ParameterNames
+
+  for(i in seq(1,length(ParameterNames))){
+    Theta[,ParameterNames[i]]=with(out_X, eval(parse(text=ReparameterizationDef[i])))
+  }
+
+  out$finalParameterCombinations=Theta
+  out$runSetting$MO_values=MO_values
+  out$runSetting$MO_weights=MO_weights
+
+  CGNM_result=out
+
+  if(saveLog){
+    save(file=paste0(saveFolderName,'/iteration_final.RDATA'), CGNM_result)
+  }
+
 
   return(out)
 }
@@ -1663,6 +1828,24 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
   ReparameterizationDef=CGNM_result$runSetting$ReparameterizationDef
   ParameterNames=CGNM_result$runSetting$ParameterNames
 
+  if(is.null(CGNM_result$runSetting$MO_weights)){
+    MO_weights=rep(0, length(initial_lowerRange))
+    MO_values=(initial_lowerRange+initial_upperRange)/2
+  }else{
+    MO_values=CGNM_result$runSetting$MO_values
+    MO_weights=CGNM_result$runSetting$MO_weights
+  }
+  if(length(MO_weights)==1&is.na(MO_weights)[1]){
+    MO_weights=rep(0, length(initial_lowerRange))
+    MO_values=(initial_lowerRange+initial_upperRange)/2
+  }
+
+  MO_index=(MO_weights!=0)
+  MO_values[!MO_index]=(initial_upperRange[!MO_index]+initial_lowerRange[!MO_index])/2
+
+
+
+
   #  CGNM_result=Cluster_Gauss_Newton_method(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , num_minimizersToFind, num_iteration, saveLog, runName, textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix)
   if(is.na(indicesToUseAsInitialIterates[1])){
     acceptParaIndex=acceptedIndices(CGNM_result, cutoff_pvalue, numParametersIncluded, useAcceptedApproximateMinimizers)
@@ -1722,23 +1905,79 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
   lowerBoundMatrix=repmat(lowerBound[BB_index],numrows = num_minimizersToFind ,numcol = 1)
   upperBoundMatrix=repmat(upperBound[BB_index],numrows = num_minimizersToFind ,numcol = 1)
 
-  nonlinearFunction_varTrans=function(x, ... ){
 
-    if(is.vector(x)){
-      theta=x
-      theta[LB_index]=exp(x[LB_index])-lowerBound[LB_index]
-      theta[UB_index]=-exp(x[UB_index])+upperBound[UB_index]
-      theta[BB_index]=(upperBound[BB_index]-lowerBound[BB_index])*(exp(x[BB_index])/(exp(x[BB_index])+1))+lowerBound[BB_index]
 
-    }else{
-      theta=x
+  MO_val_converted=MO_values
+  MO_val_converted[LB_index]=log(MO_val_converted[LB_index]-lowerBound[LB_index])
+  MO_val_converted[UB_index]=log(-MO_val_converted[UB_index]+upperBound[UB_index])
+  MO_val_converted[BB_index]=log((MO_val_converted[BB_index]-lowerBound[BB_index])/(upperBound[BB_index]-MO_val_converted[BB_index]))
+  #
+  #
+  # nonlinearFunction_varTrans=function(x, ... ){
+  #
+  #   if(is.vector(x)){
+  #     theta=x
+  #     theta[LB_index]=exp(x[LB_index])-lowerBound[LB_index]
+  #     theta[UB_index]=-exp(x[UB_index])+upperBound[UB_index]
+  #     theta[BB_index]=(upperBound[BB_index]-lowerBound[BB_index])*(exp(x[BB_index])/(exp(x[BB_index])+1))+lowerBound[BB_index]
+  #
+  #   }else{
+  #     theta=x
+  #
+  #     theta[,LB_index]=exp(x[,LB_index])-repmat(lowerBound[LB_index],numrows = dim(x)[1] ,numcol = 1)
+  #     theta[,UB_index]=-exp(x[,UB_index])+repmat(upperBound[UB_index],numrows = dim(x)[1] ,numcol = 1)
+  #     theta[,BB_index]=(upperBoundMatrix-lowerBoundMatrix)[seq(1,dim(x)[1]),]*(exp(x[,BB_index])/(exp(x[,BB_index])+1))+lowerBoundMatrix[seq(1,dim(x)[1]),]
+  #   }
+  #
+  #   nonlinearFunction(theta, ... )
+  # }
 
-      theta[,LB_index]=exp(x[,LB_index])-repmat(lowerBound[LB_index],numrows = dim(x)[1] ,numcol = 1)
-      theta[,UB_index]=-exp(x[,UB_index])+repmat(upperBound[UB_index],numrows = dim(x)[1] ,numcol = 1)
-      theta[,BB_index]=(upperBoundMatrix-lowerBoundMatrix)[seq(1,dim(x)[1]),]*(exp(x[,BB_index])/(exp(x[,BB_index])+1))+lowerBoundMatrix[seq(1,dim(x)[1]),]
+
+  if(sum(abs(MO_weights))>0){
+    nonlinearFunction_varTrans=function(x, ... ){
+
+      if(is.vector(x)){
+        theta=x
+        theta[LB_index]=exp(x[LB_index])-lowerBound[LB_index]
+        theta[UB_index]=-exp(x[UB_index])+upperBound[UB_index]
+        theta[BB_index]=(upperBound[BB_index]-lowerBound[BB_index])*(exp(x[BB_index])/(exp(x[BB_index])+1))+lowerBound[BB_index]
+        out=c(nonlinearFunction(theta, ... ),x[MO_index])
+
+      }else{
+        theta=x
+
+        theta[,LB_index]=exp(x[,LB_index])-repmat(lowerBound[LB_index],numrows = dim(x)[1] ,numcol = 1)
+        theta[,UB_index]=-exp(x[,UB_index])+repmat(upperBound[UB_index],numrows = dim(x)[1] ,numcol = 1)
+        theta[,BB_index]=(upperBoundMatrix-lowerBoundMatrix)[seq(1,dim(x)[1]),]*(exp(x[,BB_index])/(exp(x[,BB_index])+1))+lowerBoundMatrix[seq(1,dim(x)[1]),]
+
+        out=cbind(nonlinearFunction(theta, ... ),x[,MO_index])
+
+      }
+
+      return(out)
+
     }
 
-    nonlinearFunction(theta, ... )
+
+  }else{
+    nonlinearFunction_varTrans=function(x, ... ){
+
+      if(is.vector(x)){
+        theta=x
+        theta[LB_index]=exp(x[LB_index])-lowerBound[LB_index]
+        theta[UB_index]=-exp(x[UB_index])+upperBound[UB_index]
+        theta[BB_index]=(upperBound[BB_index]-lowerBound[BB_index])*(exp(x[BB_index])/(exp(x[BB_index])+1))+lowerBound[BB_index]
+
+      }else{
+        theta=x
+
+        theta[,LB_index]=exp(x[,LB_index])-repmat(lowerBound[LB_index],numrows = dim(x)[1] ,numcol = 1)
+        theta[,UB_index]=-exp(x[,UB_index])+repmat(upperBound[UB_index],numrows = dim(x)[1] ,numcol = 1)
+        theta[,BB_index]=(upperBoundMatrix-lowerBoundMatrix)[seq(1,dim(x)[1]),]*(exp(x[,BB_index])/(exp(x[,BB_index])+1))+lowerBoundMatrix[seq(1,dim(x)[1]),]
+      }
+
+      nonlinearFunction(theta, ... )
+    }
   }
 
 
@@ -1778,6 +2017,8 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
   }
 
   CGNM_result$bootstrapTheta=bootstrapTheta
+  CGNM_result$bootstrapParameterCombinations=bootstrapTheta
+
 
 
   if(CGNM_result$runSetting$saveLog){
@@ -1799,6 +2040,11 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
 #' @export
 #' @import shiny
 shinyCGNM=function(){
+  list.of.packages <- c("shiny", "shinyjs","DT","dplyr","shinydashboard", "rxode2", "mlr3misc", "shinybusy", "spsComps")
+  new.packages <- list.of.packages[!(list.of.packages %in% .packages(all.available = TRUE))]
+  if(length(new.packages)>0) {
+    stop("The following packages are missing. Please install them:\n", paste(new.packages, collapse = "\n"),"\n\nYou can use the following command to install them:\ninstall.packages(c(\"",paste(new.packages, collapse = "\",\""),"\"))")
+  }
 
   appDir <- system.file("shinyCGNM", package = "CGNM")
   if (appDir == "") {

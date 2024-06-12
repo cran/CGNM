@@ -78,6 +78,9 @@ server <- function(input, output, session) {
                Initial_upper_range = c(),
                Lower_bound = c(),
                Upper_bound = c(),
+               VaryByID=c(),
+               MO_weight=c(),
+               MO_value=c(),
                Unit = c()
              ),
            ObservedData_dat =
@@ -86,8 +89,10 @@ server <- function(input, output, session) {
                time = NA ,
                Observation_expression = NA,
                Observed_value = NA,
+               ResidualError_model = 0,
                Memo = NA
-             )
+             ),
+           UseMO=FALSE
   )
   #ODEparameter = reactiveVal(c())
 
@@ -186,7 +191,7 @@ server <- function(input, output, session) {
                     ID = rep(1, input$numDoses - dim(ll$Dose_dat)[1]),
                     dose = NA,
                     dosing.to = NA,
-                    start.time = NA,
+                    start.time = 0,
                     rate = NA
                   ))
         }
@@ -212,6 +217,16 @@ server <- function(input, output, session) {
       shinyCatch(stop(paste(
         input$dose_dt_cell_edit$value, "is not a compartment name"
       )))
+    }else if(input$dose_dt_cell_edit$value!=""){
+
+      ll$Dose_dat <<- editData(ll$Dose_dat, input$dose_dt_cell_edit)
+      validEntriesDose = unique(c(ll$Dose_dat$dose, ll$Dose_dat$start.time, ll$Dose_dat$rate))
+      shinyCatch(rv$DOSEparameter<<-extract_vars(as.formula(
+        paste(
+          "testExpression~",
+          paste(validEntriesDose, collapse = "+")
+        )
+      ))$rhs)
     }
 
     ll$Dose_dat <<- editData(ll$Dose_dat, input$dose_dt_cell_edit)
@@ -337,6 +352,9 @@ server <- function(input, output, session) {
             Initial_upper_range = NA,
             Lower_bound = 0,
             Upper_bound = NA,
+            VaryByID=0,
+            MO_weight=0.0,
+            MO_value=NA,
             Unit = NA
           )
       } else{
@@ -352,6 +370,9 @@ server <- function(input, output, session) {
                 Initial_upper_range = NA,
                 Lower_bound = 0,
                 Upper_bound = NA,
+                VaryByID=0,
+                MO_weight=0.0,
+                MO_value=NA,
                 Unit = NA
               )
             )
@@ -388,6 +409,15 @@ server <- function(input, output, session) {
 
     a=tryCatch(eval(parse(text = textIn)), error = function(e) NA)
 
+   # need(is.numeric(a), "Observation value entry must be numeric (or expression that can be soley evaluated to be a numerical value).")
+
+    if((!is.numeric(a)|!is.finite(a))){
+      shinyCatch({
+        stop("Observation value entry must be numeric (or expression that can be soley evaluated to be a numerical value).")
+
+      }, shiny = TRUE)
+    }
+
     return(a)
 
   }
@@ -397,6 +427,13 @@ server <- function(input, output, session) {
 
       print(checkIfEvaluatable(input$ObservedData_dt_cell_edit$value))
 
+    }else if(input$ObservedData_dt_cell_edit$col == 5){
+      if(!input$ObservedData_dt_cell_edit$value %in% c(0,1)){
+        shinyCatch({
+          stop("Currently only additive (0) and relative (1) residual error models are implemented thus only 0 or 1 are valid entries in ResidualError_model column.")
+
+        }, shiny = TRUE)
+      }
     }
 
     ll$ObservedData_dat <<- editData(ll$ObservedData_dat, input$ObservedData_dt_cell_edit)
@@ -427,6 +464,7 @@ server <- function(input, output, session) {
             time = NA ,
             Observation_expression = NA,
             Observed_value = NA,
+            ResidualError_model=0,
             Memo = NA
           )
         )
@@ -495,12 +533,258 @@ plot_profileLikelihood(CGNM_result,Likelihood_function = postHoc_likelihood)+geo
 
   }
 
+makeCGNM_runCode=function(parallel="none"){
+
+  useResidualFunction=sum(ll$ObservedData_dat$ResidualError_model!=0)>0
+
+  if(useResidualFunction){
+    CGNM_runOptions="targetVector = rep(0,length(observation)), "
+  }else{
+    CGNM_runOptions="targetVector = observation, "
+  }
+
+  if(ll$UseMO){
+    CGNM_runOptions=paste0(CGNM_runOptions,"initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames, MO_weights=MO_weights_vec, MO_values=MO_values_vec")
+
+  }else{
+    CGNM_runOptions=paste0(CGNM_runOptions,"initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames")
+  }
+
+
+  out=""
+  if(useResidualFunction){
+  if(sum(ll$ObservedData_dat$ResidualError_model!=1)==0){
+  out=paste0(out,"
+residual_model=function(y_sim){
+  out=(y_sim-dataSet$Observed_value)/y_sim
+
+  return(out)
+}")
+}else{
+  out=paste0(out,"
+residual_model=function(y_sim){
+  out=(y_sim-dataSet$Observed_value)/y_sim
+  out[c(",paste(which(ll$ObservedData_dat$ResidualError_model==0), collapse=",")
+
+             ,")]=y_sim[c(",paste(which(ll$ObservedData_dat$ResidualError_model==0), collapse=",")
+
+             ,")]
+
+  return(out)
+}")
+}
+  }
+
+  if(ll$UseMO){
+    out=paste0(out,"\n\n## CGNM R package above or equal to version 0.8.1 is necessary to run middle out method using MO_weights, MO_values options as implemented below.")
+  }
+
+  if(parallel=="none"){
+    if(useResidualFunction){
+      out=paste0(out,"
+
+model_function_withResidualmodel=function(x){
+  return(residual_model(model_function(x)))
+}
+
+CGNM_result=Cluster_Gauss_Newton_method(model_function_withResidualmodel, ",CGNM_runOptions,")
+CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,model_function_withResidualmodel)")
+
+    }else{
+      out=paste0(out,"
+
+CGNM_result=Cluster_Gauss_Newton_method(model_function, ",CGNM_runOptions,")
+CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,model_function)")
+    }
+
+  }else if(parallel=="win"){
+    out=paste0(out,"
+
+library(foreach)
+library(doParallel)
+
+numCoretoUse=detectCores()-1
+registerDoParallel(numCoretoUse)
+cluster=makeCluster(numCoretoUse, type =\"PSOCK\")
+registerDoParallel(cl=cluster)
+
+obsLength=length(observation)
+
+# Given CGNM searches through wide range of parameter combination, it can encounter
+# parameter combinations that is not feasible to evaluate. This try catch function
+# is implemented within CGNM for regular functions but for the matrix functions
+# user needs to implement outside of CGNM
+
+modelFunction_tryCatch=function(x){
+ out=tryCatch({",ifelse(useResidualFunction,"residual_model(model_function(x))","model_function(x)"),"},
+              error=function(cond) {rep(NA, obsLength)}
+ )
+ return(out)
+}
+
+model_matrix_function=function(x){
+  X=as.matrix(x)
+
+  if(is.matrix(X)){
+    Y_list=foreach(i=1:dim(X)[1], .export = c(\"model_function\",",ifelse(useResidualFunction,"\"residual_model\",","")," \"modelFunction_tryCatch\", \"dataSet\", \"obsLength\", \"compiledModel\"), .packages = c(\"rxode2\"))%dopar%{
+      modelFunction_tryCatch(as.numeric(X[i,]))
+    }
+
+    Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+
+  }else{
+
+   Y= modelFunction_tryCatch(X)
+  }
+
+  return(Y)
+
+}
+
+CGNM_result=Cluster_Gauss_Newton_method(model_matrix_function, ",CGNM_runOptions,")
+CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,model_matrix_function)
+
+stopCluster(cl=cluster)")
+
+  }else if(parallel=="mac"){
+
+    out=paste0(out,"
+
+library(parallel)
+
+    obsLength=length(observation)
+
+    ## Given CGNM searches through wide range of parameter combination, it can encounter
+    ## parameter combinations that is not feasible to evaluate. This try catch function
+    ## is implemented within CGNM for regular functions but for the matrix functions
+    ## user needs to implement outside of CGNM
+
+    modelFunction_tryCatch=function(x){
+      out=tryCatch({",ifelse(useResidualFunction,"residual_model(model_function(x))","model_function(x)"),"},
+                   error=function(cond) {rep(NA, obsLength)}
+      )
+      return(out)
+    }
+
+    model_matrix_function=function(x){
+      Y_list=mclapply(split(x, rep(seq(1:nrow(x)),ncol(x))), modelFunction_tryCatch,mc.cores = (parallel::detectCores()-1), mc.preschedule = FALSE)
+
+      Y=t(matrix(unlist(Y_list),ncol=length(Y_list)))
+
+      return(Y)
+    }
+
+    CGNM_result=Cluster_Gauss_Newton_method(model_matrix_function, ",CGNM_runOptions,")
+    CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,model_matrix_function)")
+
+  }
+
+
+
+if(ll$UseMO){
+  out=paste0(out,"
+
+
+MO_para_names=CGNM_result$runSetting$ParameterNames[CGNM_result$runSetting$MO_weights!=0]
+MO_values=CGNM_result$runSetting$MO_values[CGNM_result$runSetting$MO_weights!=0]
+
+plot_goodnessOfFit(CGNM_result, independentVariableVector = c(dataSet$time, rep(0,length(MO_para_names))) ,dependentVariableTypeVector = c(paste(\"ID:\",dataSet$ID, dataSet$Observation_expression), MO_para_names) )+ggplot2::geom_point(colour=\"blue\")+ggplot2::labs(caption = \"Note the middleout values shown here are after transformation\")
+plot_profileLikelihood(CGNM_result)+scale_x_continuous(trans=\"log10\")+ggplot2::geom_vline(data=data.frame(value=MO_values, parameterName=MO_para_names), aes(xintercept=value), colour=\"darkgrey\")
+")
+}else{
+  out=paste0(out,"\n\nplot_goodnessOfFit(CGNM_result, independentVariableVector = dataSet$time ,dependentVariableTypeVector = paste(\"ID:\",dataSet$ID, dataSet$Observation_expression))
+plot_profileLikelihood(CGNM_result)+scale_x_continuous(trans=\"log10\")
+")
+}
+
+
+if(sum(ll$ObservedData_dat$ResidualError_model!=0)>0){
+  out=paste0(out,"
+plot_simulationWithCI(model_function,parameter_matrix = CGNM_result$bootstrapParameterCombinations, independentVariableVector = dataSet$time, dependentVariableTypeVector =  paste(\"ID:\",dataSet$ID, dataSet$Observation_expression),
+                      observationVector = dataSet$Observed_value, observationIndpendentVariableVector = dataSet$time, observationDependentVariableTypeVector =  paste(\"ID:\",dataSet$ID, dataSet$Observation_expression))+scale_y_continuous(trans=\"log10\")
+")
+
+}
+  return(out)
+}
+
 puttogether_CGNM_code = function() {
   # writing out ODE
   compileODE_func(input$ODE_text)
   #parameterInfo_Data()
   #Dose_data()
   #ObservedData_DATA()
+
+  ParameterName_vec=ll$parameterInfo_dat$ParameterName
+  Initial_upper_range_vec=ll$parameterInfo_dat$Initial_upper_range
+  Initial_lower_range_vec=ll$parameterInfo_dat$Initial_lower_range
+  Upper_bound_vec=ll$parameterInfo_dat$Upper_bound
+  Lower_bound_vec=ll$parameterInfo_dat$Lower_bound
+  MO_weight_vec=ll$parameterInfo_dat$MO_weight
+  MO_value_vec=ll$parameterInfo_dat$MO_value
+
+  unique_IDs = unique(c(ll$ObservedData_dat$ID, ll$Dose_dat$ID))
+
+  ll$UseMO<<-FALSE
+  if(sum(ll$parameterInfo_dat$MO_weight!=0)>0){
+    ll$UseMO<<-TRUE
+  }
+
+  UseIndVar=FALSE
+  IndividualParameter_text=""
+  if(!is.null(ll$parameterInfo_dat$VaryByID)){
+    if(sum(ll$parameterInfo_dat$VaryByID!=0)>0){
+      UseIndVar=TRUE
+
+      ParameterName_vec=subset(ll$parameterInfo_dat, VaryByID==0)$ParameterName
+      Initial_upper_range_vec=subset(ll$parameterInfo_dat, VaryByID==0)$Initial_upper_range
+      Initial_lower_range_vec=subset(ll$parameterInfo_dat, VaryByID==0)$Initial_lower_range
+      Upper_bound_vec=subset(ll$parameterInfo_dat, VaryByID==0)$Upper_bound
+      Lower_bound_vec=subset(ll$parameterInfo_dat, VaryByID==0)$Lower_bound
+
+      MO_weight_vec=subset(ll$parameterInfo_dat, VaryByID==0)$MO_weight
+      MO_value_vec=subset(ll$parameterInfo_dat, VaryByID==0)$MO_value
+
+
+      temp_paraInfo=subset(ll$parameterInfo_dat, VaryByID!=0)
+      indParameterNames=temp_paraInfo$ParameterName
+
+
+      Parameter_text=paste(
+        paste0(subset(ll$parameterInfo_dat, VaryByID==0)$ParameterName, "=x[", seq(1, dim(subset(ll$parameterInfo_dat, VaryByID==0))[1]), "]"),
+        collapse = "\n"
+      )
+
+      indParaNames=c()
+      for(i in seq(1, dim(temp_paraInfo)[1])){
+        indParaNames=c(indParaNames,paste0(temp_paraInfo$ParameterName[i],"_ID",unique_IDs))
+        ParameterName_vec=c(ParameterName_vec,paste0(temp_paraInfo$ParameterName[i],"_ID",unique_IDs))
+        Initial_upper_range_vec=c(Initial_upper_range_vec, rep(temp_paraInfo$Initial_upper_range[i], length(unique_IDs)))
+        Initial_lower_range_vec=c(Initial_lower_range_vec, rep(temp_paraInfo$Initial_lower_range[i], length(unique_IDs)))
+        Upper_bound_vec=c(Upper_bound_vec, rep(temp_paraInfo$Upper_bound[i], length(unique_IDs)))
+        Lower_bound_vec=c(Lower_bound_vec, rep(temp_paraInfo$Lower_bound[i], length(unique_IDs)))
+        MO_weight_vec=c(MO_weight_vec, rep(temp_paraInfo$MO_weight[i], length(unique_IDs)))
+        MO_value_vec=c(MO_value_vec, rep(temp_paraInfo$MO_value[i], length(unique_IDs)))
+        }
+
+
+      Parameter_text=paste0(Parameter_text,"\n",paste0(
+        paste0(indParaNames, "=x[", seq(dim(subset(ll$parameterInfo_dat, VaryByID==0))[1]+1, dim(subset(ll$parameterInfo_dat, VaryByID==0))[1]+length(unique_IDs)*dim(temp_paraInfo)[1]), "]"),
+        collapse = "\n"
+      ))
+
+    }else{
+      Parameter_text=paste(
+        paste0(ll$parameterInfo_dat$ParameterName, "=x[", seq(1, dim(ll$parameterInfo_dat)[1]), "]"),
+        collapse = "\n"
+      )
+    }
+  }else{
+    Parameter_text=paste(
+      paste0(ll$parameterInfo_dat$ParameterName, "=x[", seq(1, dim(ll$parameterInfo_dat)[1]), "]"),
+      collapse = "\n"
+    )
+  }
 
   odeCodeText = paste0("ODE_text=\"\n",
                        input$ODE_text,
@@ -515,25 +799,18 @@ puttogether_CGNM_code = function() {
   # writing nonlinear function
 
   parameterText = paste0(
-    "\nmodel_function=function(x){\n",
+    "\nmodel_function=function(x){\n",Parameter_text
+  )
 
-    #  "\nmodel_function=function(x, dataSet){\n",
-    paste(
-      paste0(ll$parameterInfo_dat$ParameterName, "=x[", seq(1, dim(ll$parameterInfo_dat)[1]), "]"),
-      collapse = "\n"
+  if(!UseIndVar){
+    parameterText = paste0(
+      "\n\n",
+      parameterText,
+      "\n\nmodelingParameter=c(",
+      paste(paste0(rv$ODEparameter, "=", rv$ODEparameter), collapse = ","),
+      ")\n\n"
     )
-  )
-
-  parameterText = paste0(
-    "\n\n",
-    parameterText,
-    "\n\nmodelingParameter=c(",
-    paste(paste0(rv$ODEparameter, "=", rv$ODEparameter), collapse = ","),
-    ")\n\n"
-  )
-
-  unique_IDs = unique(c(ll$ObservedData_dat$ID, ll$Dose_dat$ID))
-
+  }
 
 
 
@@ -556,14 +833,28 @@ puttogether_CGNM_code = function() {
     paste(ll$ObservedData_dat$Observation_expression, collapse = "\",\""),
     "\"))\n")
 
-  dose_obs_Text = paste0("simResult_df=data.frame()\n")
+  dose_obs_Text = paste0("\n\nsimResult_df=data.frame()\n")
 
   for (ID_nu in unique_IDs) {
     dose_df = subset(ll$Dose_dat, ID == ID_nu)
     obs_df = subset(ll$ObservedData_dat, ID == ID_nu)
 
-    dose_obs_Text = paste0(dose_obs_Text, "\n\n ## ID: ", ID_nu, "
+    if(UseIndVar){
+      dose_obs_Text = paste0(dose_obs_Text, "\n\n## ID: ", ID_nu,
+                             "\n\n")
+
+
+
+      dose_obs_Text = paste0(dose_obs_Text, paste(paste0(indParameterNames,"=",indParameterNames,"_ID",ID_nu),collapse="\n"),
+                             "\n\nmodelingParameter=c(",
+                             paste(paste0(rv$ODEparameter, "=", rv$ODEparameter), collapse = ","),
+                             ")\n\n ev <- eventTable()")
+
+    }else{
+      dose_obs_Text = paste0(dose_obs_Text, "\n\n ## ID: ", ID_nu, "
       ev <- eventTable()")
+
+    }
 
     if(dim(dose_df)[1]>0){
 
@@ -641,31 +932,31 @@ puttogether_CGNM_code = function() {
     paste0(
       "
 ParaNames=c(\"",
-      paste(ll$parameterInfo_dat$ParameterName, collapse = "\",\""),
+      paste(ParameterName_vec, collapse = "\",\""),
       "\")
 "
     ),
 
     paste0("UR=c(",
-           paste(ll$parameterInfo_dat$Initial_upper_range, collapse = ","),
+           paste(Initial_upper_range_vec, collapse = ","),
            ")
 "
     ),
     paste0(
       "LR=c(",
-      paste(ll$parameterInfo_dat$Initial_lower_range, collapse = ","),
+      paste(Initial_lower_range_vec, collapse = ","),
       ")
 "
     ),
     paste0(
       "U_bound=c(",
-      paste(as.numeric(ll$parameterInfo_dat$Upper_bound), collapse = ","),
+      paste(as.numeric(Upper_bound_vec), collapse = ","),
       ")
 "
     ),
     paste0(
       "L_bound=c(",
-      paste(as.numeric(ll$parameterInfo_dat$Lower_bound), collapse = ","),
+      paste(as.numeric(Lower_bound_vec), collapse = ","),
       ")
 "
     ),
@@ -675,6 +966,12 @@ ParaNames=c(\"",
     )
   )
 
+if(ll$UseMO){
+
+  CGNM_run_text = paste0(CGNM_run_text,"MO_weights_vec=c(",paste(MO_weight_vec,collapse = ",") ,")
+MO_values_vec=c(",paste(MO_value_vec,collapse = ",") ,")")
+
+}
 
   testCode_text <-
     paste0(
@@ -723,6 +1020,11 @@ model_matrix_function=function(x){
   }
 
 CGNM_result=Cluster_Gauss_Newton_method(model_matrix_function,targetVector = observation, initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames)
+CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,model_matrix_function)
+
+
+plot_goodnessOfFit(CGNM_result, independentVariableVector = dataSet$time ,dependentVariableTypeVector = paste(\"ID:\",dataSet$ID, dataSet$Observation_expression))
+plot_profileLikelihood(CGNM_result)+scale_x_continuous(trans=\"log10\")
 "
 
 
@@ -771,8 +1073,12 @@ model_matrix_function=function(x){
 }
 
 CGNM_result=Cluster_Gauss_Newton_method(model_matrix_function,targetVector = observation, initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames)
+CGNM_result=Cluster_Gauss_Newton_Bootstrap_method(CGNM_result,model_matrix_function)
 
 stopCluster(cl=cluster)
+
+plot_goodnessOfFit(CGNM_result, independentVariableVector = dataSet$time ,dependentVariableTypeVector = paste(\"ID:\",dataSet$ID, dataSet$Observation_expression))
+plot_profileLikelihood(CGNM_result)+scale_x_continuous(trans=\"log10\")
 "
 
 
@@ -894,9 +1200,7 @@ observeEvent(input$testModelCode_button, {
   output[["testModelCode_output"]] <-
     renderText({testCode_text=puttogether_CGNM_code()
     eval(parse(text = paste(
-      testCode_text, paste("x=c(",
-                           paste(ll$parameterInfo_dat$Initial_lower_range, collapse = ","),
-                           ")\n\nmodel_function(x)")
+      testCode_text, paste("\nmodel_function(LR)")
       #  ")\n\nmodel_function(x, dataSet)")
     )))
     })
@@ -906,18 +1210,25 @@ observeEvent(input$testModelCode_button, {
 ### OE: testCGNMCode_button pressed----
 observeEvent(input$testCGNMCode_button, {
 
-
   tryCatch({
     withCallingHandlers({
       shinyjs::html("testCode_output", "")
       testCode_text=puttogether_CGNM_code()
-      use_testCode = paste0(
-        testCode_text,
-        "set.seed(0)
 
-    CGNM_result=Cluster_Gauss_Newton_method(model_function,targetVector = observation, num_minimizersToFind = 50, num_iteration=1,initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames)"
-        #CGNM_result=Cluster_Gauss_Newton_method(model_function,targetVector = observation, num_minimizersToFind = 50, num_iteration=1,initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames, dataSet=dataSet)"
-      )
+      if(ll$UseMO){
+        use_testCode = paste0(
+          testCode_text,
+          "set.seed(0)
+    CGNM_result=Cluster_Gauss_Newton_method(model_function,targetVector = observation, num_minimizersToFind = 50, num_iteration=1,initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames, runName=\"shinyCGNMTest\", MO_weights=c(",  paste(ll$parameterInfo_dat$MO_weight, collapse = ","), "), MO_values=c(",  paste(ll$parameterInfo_dat$MO_value, collapse = ","),"))"
+        )
+      }else{
+        use_testCode = paste0(
+          testCode_text,
+          "set.seed(0)
+    CGNM_result=Cluster_Gauss_Newton_method(model_function,targetVector = observation, num_minimizersToFind = 50, num_iteration=1,initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames, runName=\"shinyCGNMTest\")"
+        )
+      }
+
       eval(parse(text = use_testCode))
       message("<b>CGNM code verified</b>")
 
@@ -930,7 +1241,10 @@ observeEvent(input$testCGNMCode_button, {
         html = paste0(m$message, '<br>')
       )
     })
-  }, shiny = FALSE)
+  }, error=function(e) {
+    output[["testCode_output"]] <-renderUI({HTML(paste("<FONT COLOR=\"#ff0000\"> There was an error <br/>",paste(e, collapse = "<br/>"),"</FONT>"))})
+  }, finally={
+  })#, shiny = FALSE)
 
   #print("here4")
 
@@ -970,10 +1284,7 @@ output$download_CGNMcode_button <- downloadHandler(
     testCode_text=puttogether_CGNM_code()
     use_testCode = paste0(
       testCode_text,
-      "
-    CGNM_result=Cluster_Gauss_Newton_method(model_function,targetVector = observation,initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames)
-
-")
+      makeCGNM_runCode("none"))
     #    CGNM_result=Cluster_Gauss_Newton_method(model_function,targetVector = observation,initial_lowerRange = LR, initial_upperRange = UR, lowerBound = L_bound, upperBound = U_bound,ParameterNames = ParaNames, dataSet=dataSet)
 
     writeLines(use_testCode, file)
@@ -1030,7 +1341,7 @@ output$download_CGNMcode_parallel_mac_button <- downloadHandler(
     testCode_text=puttogether_CGNM_code()
     use_testCode = paste0(
       testCode_text,
-      parallelCode_mac)
+      makeCGNM_runCode("mac"))
     writeLines(use_testCode, file)
   }
 )
@@ -1044,7 +1355,7 @@ output$download_CGNMcode_parallel_win_button <- downloadHandler(
     testCode_text=puttogether_CGNM_code()
     use_testCode = paste0(
       testCode_text,
-      parallelCode_win)
+      makeCGNM_runCode("win"))
     writeLines(use_testCode, file)
   }
 )
@@ -1083,36 +1394,70 @@ input_para_csv_file <- reactive({
 
 
 observeEvent(input_para_csv_file(), {
-  Dose_dat_read=input_para_csv_file()
+  Para_dat_read=input_para_csv_file()
 
-  if(is.data.frame(Dose_dat_read)){
+  if(is.data.frame(Para_dat_read)){
 
-    validData=FALSE
+    validPara=FALSE
 
-    if(sum(names(Dose_dat_read)%in% c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","Unit"))==6){
-      validData=TRUE
-      Dose_dat_read=Dose_dat_read[, c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","Unit")]
-    }else if (dim(Dose_dat_read)[2]==6){
-      validData=TRUE
-      names(Dose_dat_read)= c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","Unit")
+    if(sum(names(Para_dat_read)%in% c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","VaryByID","MO_weight", "MO_value","Unit"))==9){
+      validPara=TRUE
+      Para_dat_read=Para_dat_read[, c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","VaryByID","MO_weight", "MO_value","Unit")]
+    }else if (dim(Para_dat_read)[2]==9){
+      validPara=TRUE
+      names(Para_dat_read)= c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","VaryByID","MO_weight", "MO_value","Unit")
+    }else if(sum(names(Para_dat_read)%in% c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","VaryByID","Unit"))==7){
+      validPara=TRUE
+      Para_dat_read=Para_dat_read[, c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","VaryByID","Unit")]
+      tempVec=Para_dat_read$Unit
+      Para_dat_read$Unit=NULL
+      Para_dat_read$MO_weight=0.0
+      Para_dat_read$MO_value=NA
+      Para_dat_read$Unit=tempVec
+    }else if (dim(Para_dat_read)[2]==7){
+      validPara=TRUE
+      names(Para_dat_read)= c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","VaryByID","Unit")
+      tempVec=Para_dat_read$Unit
+      Para_dat_read$Unit=NULL
+      Para_dat_read$MO_weight=0.0
+      Para_dat_read$MO_value=NA
+      Para_dat_read$Unit=tempVec
+    }else if(sum(names(Para_dat_read)%in% c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","Unit"))==6){
+      validPara=TRUE
+      Para_dat_read=Para_dat_read[, c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","Unit")]
+      tempVec=Para_dat_read$Unit
+      Para_dat_read$Unit=NULL
+      Para_dat_read$VaryByID=0
+      Para_dat_read$MO_weight=0.0
+      Para_dat_read$MO_value=NA
+      Para_dat_read$Unit=tempVec
+    }else if (dim(Para_dat_read)[2]==6){
+      validPara=TRUE
+      names(Para_dat_read)= c("ParameterName","Initial_lower_range","Initial_upper_range","Lower_bound", "Upper_bound","Unit")
+      tempVec=Para_dat_read$Unit
+      Para_dat_read$Unit=NULL
+      Para_dat_read$VaryByID=0
+      Para_dat_read$MO_weight=0.0
+      Para_dat_read$MO_value=NA
+      Para_dat_read$Unit=tempVec
     }else{
-      shinyCatch(stop("csv file with dosing information needs to have exactly 6 columns containing ParameterName,Initial_lower_range,Initial_upper_range,Lower_bound, Upper_bound,Unit."))
+      shinyCatch(stop("csv file with dosing information needs to have exactly 6, 7 or 9 columns containing ParameterName,Initial_lower_range,Initial_upper_range,Lower_bound, Upper_bound, (VaryByID), (MO_weight, MO_value,Unit)."))
     }
 
-    if(validData){
+    if(validPara){
 
 
-      Dose_dat_update=ll$parameterInfo_dat
-      overLappingParameters=Dose_dat_read$ParameterName[Dose_dat_read$ParameterName %in% Dose_dat_update$ParameterName]
+      Para_dat_update=ll$parameterInfo_dat
+      overLappingParameters=Para_dat_read$ParameterName[Para_dat_read$ParameterName %in% Para_dat_update$ParameterName]
 
       for(paraNu in overLappingParameters){
-        Dose_dat_update[Dose_dat_update$ParameterName==paraNu,]=Dose_dat_read[Dose_dat_read$ParameterName==paraNu,]
+        Para_dat_update[Para_dat_update$ParameterName==paraNu,]=Para_dat_read[Para_dat_read$ParameterName==paraNu,]
       }
 
 
 
-      if (!identical(Dose_dat_update, ll$parameterInfo_dat)) {
-        ll$parameterInfo_dat<<- Dose_dat_update
+      if (!identical(Para_dat_update, ll$parameterInfo_dat)) {
+        ll$parameterInfo_dat<<- Para_dat_update
         output[["parameterInfo_dt"]] <- renderDT({
           datatable(
             ll$parameterInfo_dat,
@@ -1200,14 +1545,32 @@ observeEvent(input_obs_csv_file(), {
 
     validData=FALSE
 
-    if(sum(names(Obs_dat_read)%in% c("ID","time","Observation_expression","Observed_value", "Memo"))==5){
+
+
+    if(sum(names(Obs_dat_read)%in% c("ID","time","Observation_expression","Observed_value", "ResidualError_model","Memo"))==6){
+      validData=TRUE
+      Obs_dat_read=Obs_dat_read[, c("ID","time","Observation_expression","Observed_value", "ResidualError_model", "Memo")]
+    }else if (dim(Obs_dat_read)[2]==6){
+      validData=TRUE
+      names(Obs_dat_read)= c("ID","time","Observation_expression","Observed_value", "ResidualError_model", "Memo")
+    }else if(sum(names(Obs_dat_read)%in% c("ID","time","Observation_expression","Observed_value", "Memo"))==5){
       validData=TRUE
       Obs_dat_read=Obs_dat_read[, c("ID","time","Observation_expression","Observed_value", "Memo")]
+      temp_memo=Obs_dat_read$Memo
+      Obs_dat_read$Memo=NULL
+      Obs_dat_read$ResidualError_model=0
+      Obs_dat_read$Memo=temp_memo
+
     }else if (dim(Obs_dat_read)[2]==5){
       validData=TRUE
       names(Obs_dat_read)= c("ID","time","Observation_expression","Observed_value", "Memo")
+      temp_memo=Obs_dat_read$Memo
+      Obs_dat_read$Memo=NULL
+      Obs_dat_read$ResidualError_model=0
+      Obs_dat_read$Memo=temp_memo
+
     }else{
-      shinyCatch(stop("csv file with observation information needs to have exactly 5 columns containing ID, time, Observation_expression, Observed_value, and Memo"))
+      shinyCatch(stop("csv file with observation information needs to have 5 or 6 columns containing ID, time, Observation_expression, Observed_value, (ResidualError_model), and Memo"))
     }
 
     if(validData){
@@ -1273,7 +1636,39 @@ restoreState_function = function(rs) {
 
   updateNumericInput(session, "numDoses", value = dim(rs$Dose_dat)[1])
 
+  shinyCatch(rv$DOSEparameter<<-extract_vars(as.formula(
+    paste(
+      "testExpression~",
+      paste(rs$Dose_dat[,2], collapse = "+")
+    )
+  ))$rhs)
+
+
   if (!identical(rs$parameterInfo_dat, ll$parameterInfo_dat)) {
+
+    if(!"VaryByID"%in%names(rs$parameterInfo_dat)){
+      tempVec=rs$parameterInfo_dat$Unit
+      rs$parameterInfo_dat$Unit=NULL
+      rs$parameterInfo_dat$VaryByID=0
+      rs$parameterInfo_dat$Unit=tempVec
+
+    }
+
+
+    if(!"MO_weight"%in%names(rs$parameterInfo_dat)){
+      tempVec=rs$parameterInfo_dat$Unit
+      rs$parameterInfo_dat$Unit=NULL
+      rs$parameterInfo_dat$MO_weight=0.0
+      rs$parameterInfo_dat$Unit=tempVec
+    }
+
+    if(!"MO_value"%in%names(rs$parameterInfo_dat)){
+      tempVec=rs$parameterInfo_dat$Unit
+      rs$parameterInfo_dat$Unit=NULL
+      rs$parameterInfo_dat$MO_value=NA
+      rs$parameterInfo_dat$Unit=tempVec
+    }
+
     ll$parameterInfo_dat<<- rs$parameterInfo_dat
     output[["parameterInfo_dt"]] <- renderDT({
       datatable(
@@ -1287,9 +1682,22 @@ restoreState_function = function(rs) {
     }, server = FALSE)
   }
 
+
   updateNumericInput(session, "numObservations", value = dim(rs$ObservedData_dat)[1])
 
+
+
+
+
   if (!identical(rs$ObservedData_dat,ll$ObservedData_dat)) {
+
+    if(!"ResidualError_model"%in%names(rs$ObservedData_dat)){
+      tempVec=rs$ObservedData_dat$Memo
+      rs$ObservedData_dat$Memo=NULL
+      rs$ObservedData_dat$ResidualError_model=0
+      rs$ObservedData_dat$Memo=tempVec
+    }
+
     ll$ObservedData_dat <<- rs$ObservedData_dat
     output[["ObservedData_dt"]] <- renderDT({
       datatable(
