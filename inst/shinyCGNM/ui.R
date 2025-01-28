@@ -54,6 +54,7 @@ ui <- function(req) {
   dashboardPage(
     dashboardHeader(title = "Shiny CGNM"),
     dashboardSidebar(
+      textInput("runNameText", "run name", value = "", width = NULL, placeholder = NULL),
       sidebarMenu(
         menuItem(
           "Step1: specify ODE",
@@ -78,6 +79,11 @@ ui <- function(req) {
         menuItem(
           "Step5: generate code",
           tabName = "generateCODE",
+          icon = icon("glass-whiskey")
+        ),
+        menuItem(
+          "Step6: generate simulation code",
+          tabName = "generate_simulation_CODE",
           icon = icon("glass-whiskey")
         )
       ),
@@ -129,6 +135,10 @@ ui <- function(req) {
         ),
         actionButton("compileODE", "Compile ODEs"),
         htmlOutput("ODE_compileMessage"),
+        h5("example ode:"),
+        h6("d/dt(A_admin)=-ka*A_admin"),
+        h6("d/dt(C_central)=1/V_central*(ka*A_admin-CL*C_central-Q*C_central+Q*C_pref)"),
+        h6("d/dt(C_pref)=1/V_pref*(Q*C_central-Q*C_pref)"),
       ),
 
       tabItem(
@@ -212,6 +222,43 @@ ui <- function(req) {
         downloadButton("download_CGNMcode_parallel_mac_button", label = "Download R script to run CGNM in parallel in MAC"),
         downloadButton("download_CGNMcode_parallel_win_button", label = "Download R script to run CGNM in parallel in Windows"),
         downloadButton("download_posthocMiddleout_button", label = "Download R script for posthoc middle out"),
+
+      ),
+
+      tabItem(
+        tabName = "generate_simulation_CODE",
+        add_busy_spinner(spin = "fading-circle"),
+        shinyjs::useShinyjs(),
+        h3("Provide dosing information for simulation"),
+        numericInput(
+          "sim_numDoses",
+          "Number of dose events to simulate",
+          1,
+          min = 1,
+          step = 1
+        ),
+        DTOutput("sim_dose_dt"),
+        actionButton("copySimDoseFromDose_button", "Copy original dose events to simulation dose events"),
+        downloadButton("download_sim_dose_csv", label = "Download simulation Dose as .csv"),
+        fileInput("sim_dose_csv", "You can import simulation dose from a csv file by uploarding it below:"),
+        h6("Dose csv file should contain the following columns: ID, dose, dosing.to, start.time and rate."),
+        h3("Provide data skelton for simulation"),
+        numericInput(
+          "sim_numObservations",
+          "Number of observations",
+          1,
+          min = 1,
+          step = 1
+        ),
+        DTOutput("sim_ObservedData_dt"),
+        actionButton("copySimObsFromObs_button", "Copy original observation time points to simulation time points"),
+        downloadButton('download_sim_obs_csv',"Download simulation timepoints as csv file"),
+        fileInput("sim_obs_csv", "You can import simulation timepoints from a csv file by uploarding it below:"),
+        h6("Simulation time point csv file should contain the following columns: ID, time, Observation_expression, and Memo."),
+        h3("Simulation code"),
+        actionButton("sim_makeCode_button", "Generate simulation code"),
+        verbatimTextOutput("simulationCode_output"),
+        downloadButton("download_simulationCode_button", label = "Download R script to run Simulation")
 
       )
 

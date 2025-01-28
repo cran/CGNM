@@ -849,7 +849,7 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
 
     if(length(minIndex)>1){
       min_vec=c(min_vec, median(dataframe_nu$value[minIndex] ))
-      identifiability="Not identifiable"
+#      identifiability="Not identifiable"
     }else{
       min_vec=c(min_vec, dataframe_nu$value[minIndex] )
     }
@@ -900,11 +900,12 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
   out_df[out_df$parameter_identifiability=="Not identifiable","best"]=NA
 
 
-  pretty_df=data.frame(parameterName=paraKind,value=paste(signif(as.numeric(out_df$best), digits = 3), prettyString_vec), parameter_identifiability=identifiability_vec)
+  pretty_df=data.frame(parameterName=paraKind,value=paste(signif(as.numeric(out_df$best), digits = 3), prettyString_vec))#, parameter_identifiability=identifiability_vec)
 
-  names(pretty_df)=c("", paste0("best-fit [",alpha*100,"percentile, ", (1-alpha)*100,"percentile ]"),"identifiability")
+  names(pretty_df)=c("", paste0("best-fit [",alpha*100,"percentile, ", (1-alpha)*100,"percentile ]"))#,"identifiability")
 
-  names(out_df)=c("", paste(alpha*100,"percentile"), "best-fit", paste((1-alpha)*100,"percentile"),"identifiability")
+  out_df=out_df[,seq(1,4)]
+  names(out_df)=c("", paste(alpha*100,"percentile"), "best-fit", paste((1-alpha)*100,"percentile"))#,"identifiability")
 
   if(pretty){
     return(pretty_df)
@@ -1064,7 +1065,7 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
     if(logLocation$runSetting$runName==""){
       DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
     }else{
-      DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
+      DirectoryName_vec=c(paste0(logLocation$runSetting$runName, "_CGNM_log"),paste0(logLocation$runSetting$runName, "_CGNM_log_bootstrap"))
     }
 
 
@@ -2288,7 +2289,7 @@ suggestInitialLowerRange=function(logLocation, alpha=0.25, numBins=NA){
     if(logLocation$runSetting$runName==""){
       DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
     }else{
-      DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
+      DirectoryName_vec=c(paste0(logLocation$runSetting$runName,"_CGNM_log"),paste0(logLocation$runSetting$runName,"_CGNM_log_bootstrap"))
     }
 
   }else{
@@ -2435,7 +2436,7 @@ suggestInitialUpperRange=function(logLocation, alpha=0.25, numBins=NA){
     if(logLocation$runSetting$runName==""){
       DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
     }else{
-      DirectoryName_vec=c(paste0("CGNM_log_",logLocation$runSetting$runName),paste0("CGNM_log_",logLocation$runSetting$runName,"bootstrap"))
+      DirectoryName_vec=c(paste0(logLocation$runSetting$runName,"_CGNM_log"),paste0(logLocation$runSetting$runName,"_CGNM_log_bootstrap"))
     }
 
   }else{
@@ -2538,7 +2539,8 @@ suggestInitialUpperRange=function(logLocation, alpha=0.25, numBins=NA){
 #' @param observationVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
 #' @param observationIndpendentVariableVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
 #' @param observationDependentVariableTypeVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
-#' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+#' @param overLay (default: FALSE) \emph{TRUE or FALSE} if TRUE all variable types are overlayed in one plot, if FALSE the plot will be faceted by the variable type.
+#' @return \emph{A list} including ggplot object ($plot) and simulated data matrix ($plotData_matrix).
 #' @examples
 #'\dontrun{
 #'model_analytic_function=function(x){
@@ -2573,114 +2575,132 @@ suggestInitialUpperRange=function(logLocation, alpha=0.25, numBins=NA){
 #' }
 #' @export
 #' @import ggplot2
-
-plot_simulationWithCI=function(simulationFunction, parameter_matrix,  independentVariableVector=NA, dependentVariableTypeVector=NA, confidenceLevels=c(0.25,0.75), observationVector=NA, observationIndpendentVariableVector=NA, observationDependentVariableTypeVector=NA){
-
-  CGNM_result=NULL
-  independentVariable=NULL
-  dependentVariableType=NULL
-  lower_percentile=NULL
-  upper_percentile=NULL
-  observation=NULL
+plot_simulationWithCI=function(simulationFunction, parameter_matrix,  independentVariableVector=NA, dependentVariableTypeVector=NA, confidenceLevels=c(0.25,0.75), observationVector=NA, observationIndpendentVariableVector=NA, observationDependentVariableTypeVector=NA,overLay=FALSE){
 
   lengthSimulation=length(simulationFunction(as.numeric(parameter_matrix[1,])))
 
-  ValidIndependentVariableInput=TRUE
+  plotData_matrix=matrix(NA, nrow = dim(parameter_matrix)[1], ncol = lengthSimulation)
 
-  if(is.na(independentVariableVector[1])){
-    ValidIndependentVariableInput=FALSE
-    warning("independentVariableVector was not provided so replaced with seq(1,length of simulation)")
-
-  }else if(length(independentVariableVector)!=lengthSimulation){
-    ValidIndependentVariableInput=FALSE
-    warning("length of independentVariableVector was not the same length as the output of the simulationFunction so replaced with seq(1,length of output of simulation)")
-
-  }
-
-  if(!ValidIndependentVariableInput){
-    independentVariableVector=seq(1,lengthSimulation)
-  }
-
-  ValidobservationVectorInput=TRUE
-
-
-  if(is.na(observationVector[1])){
-    ValidobservationVectorInput=FALSE
-  }
-
-
-  if(ValidobservationVectorInput&is.na(observationIndpendentVariableVector[1])){
-    observationIndpendentVariableVector=independentVariableVector
-    warning("since observationIndpendentVariableVector is not provided replace it with independentVariableVector")
-
-  }
-
-  if(length(observationVector)!=length(observationIndpendentVariableVector)){
-    ValidobservationVectorInput=FALSE
-    warning("observationVector and observationIndpendentVariableVector need to be the same length hence observations will not be overlayed")
-  }
-
-  validDependentVariableTypeVectorInput=TRUE
-
-  if(is.na(dependentVariableTypeVector[1])){
-    validDependentVariableTypeVectorInput=FALSE
-  }else if(length(dependentVariableTypeVector)!=lengthSimulation){
-    dependentVariableTypeVector=NA
-    validDependentVariableTypeVectorInput=FALSE
-
-    warning("dependentVariableTypeVector was not the same length as the output of the simulationFunction so replaced with NA")
-  }
-
-
-
-  plot_df=data.frame()
 
 
   for(i in seq(1,dim(parameter_matrix)[1] )){
-    plot_df=rbind(plot_df, data.frame(simulation=simulationFunction(as.numeric(parameter_matrix[i,])), independentVariable=independentVariableVector, dependentVariableType=dependentVariableTypeVector))
+    plotData_matrix[i,]=simulationFunction(as.numeric(parameter_matrix[i,]))#, independentVariable=independentVariableVector, dependentVariableType=dependentVariableTypeVector))
   }
 
-  median_vec=c()
-  lower_percentile_vec=c()
-  upper_percentile_vec=c()
-  kind_df=unique(plot_df[,c("independentVariable", "dependentVariableType")])
-
-  for(i in seq(1,dim(kind_df)[1])){
-    kind=kind_df[i,]
-    if(validDependentVariableTypeVectorInput){
-      now_data_df=subset(plot_df, independentVariable==kind$independentVariable&dependentVariableType==kind$dependentVariableType )
-
-    }else{
-      now_data_df=subset(plot_df, independentVariable==kind$independentVariable )
-
-    }
-
-    nowQuantile=quantile(now_data_df$simulation, probs = c(confidenceLevels[1],0.5,confidenceLevels[2]), na.rm = TRUE)
-
-    lower_percentile_vec=c(lower_percentile_vec,nowQuantile[1])
-    median_vec=c(median_vec,nowQuantile[2])
-    upper_percentile_vec=c(upper_percentile_vec,nowQuantile[3])
-  }
-
-  plot_CI_df=kind_df
-  plot_CI_df$lower_percentile=as.numeric(lower_percentile_vec)
-  plot_CI_df$upper_percentile=as.numeric(upper_percentile_vec)
-  plot_CI_df$median=as.numeric(median_vec)
+  g=plot_simulationMatrixWithCI(plotData_matrix,  independentVariableVector=independentVariableVector, dependentVariableTypeVector=dependentVariableTypeVector, confidenceLevels=confidenceLevels, observationVector=observationVector, observationIndpendentVariableVector=observationIndpendentVariableVector, observationDependentVariableTypeVector=observationDependentVariableTypeVector, overLay)
 
 
-  g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ ggplot2::labs(caption = paste0("solid line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
-
-  if(validDependentVariableTypeVectorInput){
-    g=g+ggplot2::facet_wrap(.~dependentVariableType)
-  }
-  if(ValidobservationVectorInput){
-    g=g+ggplot2::geom_point(data=data.frame(independentVariable=observationIndpendentVariableVector, observation=observationVector, dependentVariableType=observationDependentVariableTypeVector), colour="red", aes(x=independentVariable,y=observation), inherit.aes = FALSE)
-  }
-
-  g=g+ggplot2::ylab("Dependent variable")
-
+ # out=list(plot=g, plotData_matrix=plotData_matrix)
   return(g)
 }
+
+# plot_simulationWithCI=function(simulationFunction, parameter_matrix,  independentVariableVector=NA, dependentVariableTypeVector=NA, confidenceLevels=c(0.25,0.75), observationVector=NA, observationIndpendentVariableVector=NA, observationDependentVariableTypeVector=NA){
+#
+#   CGNM_result=NULL
+#   independentVariable=NULL
+#   dependentVariableType=NULL
+#   lower_percentile=NULL
+#   upper_percentile=NULL
+#   observation=NULL
+#
+#   lengthSimulation=length(simulationFunction(as.numeric(parameter_matrix[1,])))
+#
+#   ValidIndependentVariableInput=TRUE
+#
+#   if(is.na(independentVariableVector[1])){
+#     ValidIndependentVariableInput=FALSE
+#     warning("independentVariableVector was not provided so replaced with seq(1,length of simulation)")
+#
+#   }else if(length(independentVariableVector)!=lengthSimulation){
+#     ValidIndependentVariableInput=FALSE
+#     warning("length of independentVariableVector was not the same length as the output of the simulationFunction so replaced with seq(1,length of output of simulation)")
+#
+#   }
+#
+#   if(!ValidIndependentVariableInput){
+#     independentVariableVector=seq(1,lengthSimulation)
+#   }
+#
+#   ValidobservationVectorInput=TRUE
+#
+#
+#   if(is.na(observationVector[1])){
+#     ValidobservationVectorInput=FALSE
+#   }
+#
+#
+#   if(ValidobservationVectorInput&is.na(observationIndpendentVariableVector[1])){
+#     observationIndpendentVariableVector=independentVariableVector
+#     warning("since observationIndpendentVariableVector is not provided replace it with independentVariableVector")
+#
+#   }
+#
+#   if(length(observationVector)!=length(observationIndpendentVariableVector)){
+#     ValidobservationVectorInput=FALSE
+#     warning("observationVector and observationIndpendentVariableVector need to be the same length hence observations will not be overlayed")
+#   }
+#
+#   validDependentVariableTypeVectorInput=TRUE
+#
+#   if(is.na(dependentVariableTypeVector[1])){
+#     validDependentVariableTypeVectorInput=FALSE
+#   }else if(length(dependentVariableTypeVector)!=lengthSimulation){
+#     dependentVariableTypeVector=NA
+#     validDependentVariableTypeVectorInput=FALSE
+#
+#     warning("dependentVariableTypeVector was not the same length as the output of the simulationFunction so replaced with NA")
+#   }
+#
+#
+#
+#   plot_df=data.frame()
+#
+#
+#   for(i in seq(1,dim(parameter_matrix)[1] )){
+#     plot_df=rbind(plot_df, data.frame(simulation=simulationFunction(as.numeric(parameter_matrix[i,])), independentVariable=independentVariableVector, dependentVariableType=dependentVariableTypeVector))
+#   }
+#
+#   median_vec=c()
+#   lower_percentile_vec=c()
+#   upper_percentile_vec=c()
+#   kind_df=unique(plot_df[,c("independentVariable", "dependentVariableType")])
+#
+#   for(i in seq(1,dim(kind_df)[1])){
+#     kind=kind_df[i,]
+#     if(validDependentVariableTypeVectorInput){
+#       now_data_df=subset(plot_df, independentVariable==kind$independentVariable&dependentVariableType==kind$dependentVariableType )
+#
+#     }else{
+#       now_data_df=subset(plot_df, independentVariable==kind$independentVariable )
+#
+#     }
+#
+#     nowQuantile=quantile(now_data_df$simulation, probs = c(confidenceLevels[1],0.5,confidenceLevels[2]), na.rm = TRUE)
+#
+#     lower_percentile_vec=c(lower_percentile_vec,nowQuantile[1])
+#     median_vec=c(median_vec,nowQuantile[2])
+#     upper_percentile_vec=c(upper_percentile_vec,nowQuantile[3])
+#   }
+#
+#   plot_CI_df=kind_df
+#   plot_CI_df$lower_percentile=as.numeric(lower_percentile_vec)
+#   plot_CI_df$upper_percentile=as.numeric(upper_percentile_vec)
+#   plot_CI_df$median=as.numeric(median_vec)
+#
+#
+#   g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ ggplot2::labs(caption = paste0("solid line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
+#
+#   if(validDependentVariableTypeVectorInput){
+#     g=g+ggplot2::facet_wrap(.~dependentVariableType)
+#   }
+#   if(ValidobservationVectorInput){
+#     g=g+ggplot2::geom_point(data=data.frame(independentVariable=observationIndpendentVariableVector, observation=observationVector, dependentVariableType=observationDependentVariableTypeVector), colour="red", aes(x=independentVariable,y=observation), inherit.aes = FALSE)
+#   }
+#
+#   g=g+ggplot2::ylab("Dependent variable")
+#
+#   return(g)
+# }
 
 
 
@@ -2696,7 +2716,8 @@ plot_simulationWithCI=function(simulationFunction, parameter_matrix,  independen
 #' @param observationVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
 #' @param observationIndpendentVariableVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
 #' @param observationDependentVariableTypeVector (default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.
-#' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+#' @param overLay (default: FALSE) \emph{TRUE or FALSE} if TRUE all variable types are overlayed in one plot, if FALSE the plot will be faceted by the variable type.
+#' @return \emph{A ggplot object}.
 #' @examples
 #'\dontrun{
 #'model_analytic_function=function(x){
@@ -2733,7 +2754,7 @@ plot_simulationWithCI=function(simulationFunction, parameter_matrix,  independen
 #' @export
 #' @import ggplot2
 
-plot_simulationMatrixWithCI=function(simulationMatrix,  independentVariableVector=NA, dependentVariableTypeVector=NA, confidenceLevels=c(0.25,0.75), observationVector=NA, observationIndpendentVariableVector=NA, observationDependentVariableTypeVector=NA){
+plot_simulationMatrixWithCI=function(simulationMatrix,  independentVariableVector=NA, dependentVariableTypeVector=NA, confidenceLevels=c(0.25,0.75), observationVector=NA, observationIndpendentVariableVector=NA, observationDependentVariableTypeVector=NA, overLay=FALSE){
 
   CGNM_result=NULL
   independentVariable=NULL
@@ -2827,13 +2848,24 @@ plot_simulationMatrixWithCI=function(simulationMatrix,  independentVariableVecto
   plot_CI_df$median=as.numeric(median_vec)
 
 
-  g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ ggplot2::labs(caption = paste0("solid line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
+  if(validDependentVariableTypeVectorInput&overLay){
+    g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median, colour=dependentVariableType ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile, fill=dependentVariableType), alpha=0.2)+ ggplot2::labs(caption = paste0("solid line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
 
-  if(validDependentVariableTypeVectorInput){
-    g=g+ggplot2::facet_wrap(.~dependentVariableType)
+  }else{
+    g=ggplot2::ggplot(plot_CI_df, aes(x=independentVariable , y=median ))+ggplot2::geom_line()+ggplot2::geom_ribbon(aes(ymin=lower_percentile, ymax=upper_percentile), alpha=0.2)+ ggplot2::labs(caption = paste0("solid line is the median of the model prediction and shaded area is its confidence interval of ",confidenceLevels[1]*100,"-",confidenceLevels[2]*100," percentile"))
+    if(validDependentVariableTypeVectorInput){
+      g=g+ggplot2::facet_wrap(.~dependentVariableType)
+    }
   }
+
   if(ValidobservationVectorInput){
-    g=g+ggplot2::geom_point(data=data.frame(independentVariable=observationIndpendentVariableVector, observation=observationVector, dependentVariableType=observationDependentVariableTypeVector), colour="red", aes(x=independentVariable,y=observation), inherit.aes = FALSE)
+    if(overLay){
+      g=g+ggplot2::geom_point(data=data.frame(independentVariable=observationIndpendentVariableVector, observation=observationVector, dependentVariableType=observationDependentVariableTypeVector), aes(x=independentVariable,y=observation, colour=dependentVariableType), inherit.aes = FALSE)
+
+    }else{
+      g=g+ggplot2::geom_point(data=data.frame(independentVariable=observationIndpendentVariableVector, observation=observationVector, dependentVariableType=observationDependentVariableTypeVector), colour="red", aes(x=independentVariable,y=observation), inherit.aes = FALSE)
+
+    }
   }
 
   g=g+ggplot2::ylab("Dependent variable")+ggplot2::xlab("Independent variable")

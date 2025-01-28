@@ -12,7 +12,8 @@ plot_simulationWithCI(
   confidenceLevels = c(0.25, 0.75),
   observationVector = NA,
   observationIndpendentVariableVector = NA,
-  observationDependentVariableTypeVector = NA
+  observationDependentVariableTypeVector = NA,
+  overLay = FALSE
 )
 }
 \arguments{
@@ -31,9 +32,11 @@ plot_simulationWithCI(
 \item{observationIndpendentVariableVector}{(default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.}
 
 \item{observationDependentVariableTypeVector}{(default: NA) \emph{A vector of numbers} used when wishing to overlay the plot of observations to the simulation.}
+
+\item{overLay}{(default: FALSE) \emph{TRUE or FALSE} if TRUE all variable types are overlayed in one plot, if FALSE the plot will be faceted by the variable type.}
 }
 \value{
-\emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+\emph{A list} including ggplot object ($plot) and simulated data matrix ($plotData_matrix).
 }
 \description{
 Plot model simulation where the various parameter combinations are provided and conduct simulations and then the confidence interval (or more like a confidence region) is plotted.
