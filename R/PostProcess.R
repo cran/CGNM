@@ -757,6 +757,56 @@ plot_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterN
   plot_SSRsurface(logLocation,  alpha= alpha, profile_likelihood=TRUE, numBins=numBins, ParameterNames=ParameterNames, ReparameterizationDef=ReparameterizationDef, showInitialRange=showInitialRange, Residual_function=Likelihood_function)
 }
 
+
+
+#' @title compare_profileLikelihood
+#' @description
+#' Draw profile likelihood surface using the function evaluations conducted during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().  The grey horizontal line is the threshold for 95% pointwise confidence interval.
+#' @param logLocation (required input) \emph{List of strings} of folder directory where CGNM computation log files exist. (also can be list of CGNM_result objects)
+#' @param alpha (default: 0.25) \emph{a number between 0 and 1} level of significance (used to draw horizontal line on the profile likelihood).
+#' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
+#' @param ParameterNames (default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)
+#' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax
+#' @param showInitialRange (default: TRUE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
+#' @param Likelihood_function (default: Residual_function_def) \emph{a function} that takes CGNM_result and initial then to calculate a quantity to be sketched in logscale e.g. SSR) this was implemented to conduct pos hoc drawing of the profile likelihood by providing the new definition of likelihood after all CGNM calculations are done.
+#' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
+#' @examples
+#'\dontrun{
+#'model_analytic_function=function(x){
+#'
+#'  observation_time=c(0.1,0.2,0.4,0.6,1,2,3,6,12)
+#'  Dose=1000
+#'  F=1
+#'
+#'  ka=x[1]
+#'  V1=x[2]
+#'  CL_2=x[3]
+#'  t=observation_time
+#'
+#'  Cp=ka*F*Dose/(V1*(ka-CL_2/V1))*(exp(-CL_2/V1*t)-exp(-ka*t))
+#'
+#'  log10(Cp)
+#'}
+#'
+#' observation=log10(c(4.91, 8.65, 12.4, 18.7, 24.3, 24.5, 18.4, 4.66, 0.238))
+#'
+#' CGNM_result=Cluster_Gauss_Newton_method(
+#' nonlinearFunction=model_analytic_function,
+#' targetVector = observation,
+#' initial_lowerRange = c(0.1,0.1,0.1), initial_upperRange =  c(10,10,10),
+#' num_iter = 10, num_minimizersToFind = 100, saveLog=TRUE)
+#'
+#' plot_profileLikelihood("CGNM_log")
+#' }
+#' @export
+#' @import ggplot2
+compare_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=TRUE, Likelihood_function=Residual_function_def){
+  plot_SSRsurface(logLocation,  alpha= alpha, profile_likelihood=TRUE, numBins=numBins, ParameterNames=ParameterNames, ReparameterizationDef=ReparameterizationDef, showInitialRange=showInitialRange, Residual_function=Likelihood_function,
+                  compareBetweenModels=TRUE
+  )
+}
+
+
 #' @title table_profileLikelihoodConfidenceInterval
 #' @description
 #' Make table of confidence intervals that are approximated from the profile likelihood. First inspect profile likelihood plot and make sure the plot is smooth and has good enough resolution and the initial range is appropriate. Do not report this table without checking the profile likelihood plot.
@@ -767,6 +817,7 @@ plot_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterN
 #' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax
 #' @param pretty (default: FALSE) \emph{TRUE or FALSE} if true then the publication ready table will be an output
 #' @param Likelihood_function (default: Residual_function_def) \emph{a function} that takes CGNM_result and initial then to calculate a quantity to be sketched in logscale e.g. SSR) this was implemented to conduct pos hoc drawing of the profile likelihood by providing the new definition of likelihood after all CGNM calculations are done.
+#' @param silent (default: FALSE) \emph{TRUE or FALSE} set to TRUE to suppress warning and messages.
 #' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 #' @examples
 #'\dontrun{
@@ -797,8 +848,10 @@ plot_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterN
 #' table_profileLikelihoodConfidenceInterval("CGNM_log")
 #' }
 #' @export
-table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numBins=NA, ParameterNames=NA, ReparameterizationDef=NA, pretty=FALSE, Likelihood_function=Residual_function_def){
-  print("WARNING: ALWAYS first inspect the profile likelihood plot (using plot_profileLikelihood()) and then use this table, DO NOT USE this table by itself.")
+table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numBins=NA, ParameterNames=NA, ReparameterizationDef=NA, pretty=FALSE, Likelihood_function=Residual_function_def, silent=FALSE){
+  if(!silent){
+    print("WARNING: ALWAYS first inspect the profile likelihood plot (using plot_profileLikelihood()) and then use this table, DO NOT USE this table by itself.")
+  }
 
 
   boundValue=NULL
@@ -813,7 +866,7 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
   reparaXinit=NULL
   value=NULL
 
-  data=makeSSRsurfaceDataset(logLocation, TRUE, numBins, NA, ParameterNames, ReparameterizationDef, FALSE, Residual_function = Likelihood_function)
+  data=makeSSRsurfaceDataset(logLocation, TRUE, numBins, NA, ParameterNames, ReparameterizationDef, FALSE, Residual_function = Likelihood_function, silent=silent)
 
 
   likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
@@ -926,6 +979,7 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
 #' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax
 #' @param showInitialRange (default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
 #' @param Residual_function (default: Residual_function_def) \emph{a function} that takes CGNM_result and initial then to calculate a quantity to be sketched in logscale e.g. SSR) this was implemented to conduct pos hoc drawing of the profile likelihood by providing the new definition of likelihood after all CGNM calculations are done.
+#' @param compareBetweenModels (default: FALSE) used for the implementation of compare_profileLikelihood so do not use when calling plot_SSRsurface function.
 #' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 #' @examples
 #'\dontrun{
@@ -957,7 +1011,7 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
 #' }
 #' @export
 #' @import ggplot2
-plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBins=NA, maxSSR=NA, ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE, Residual_function=Residual_function_def){
+plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBins=NA, maxSSR=NA, ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE, Residual_function=Residual_function_def, compareBetweenModels=FALSE){
 
   boundValue=NULL
   individual=NULL
@@ -967,13 +1021,30 @@ plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBi
   newvalue=NULL
   maxBoundValue=NULL
   minBoundValue=NULL
+  runName=NULL
 
 
   reparaXinit=NULL
   value=NULL
 
-  data=makeSSRsurfaceDataset(logLocation, profile_likelihood, numBins, maxSSR, ParameterNames, ReparameterizationDef, showInitialRange, Residual_function=Residual_function)
-  likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
+  if(compareBetweenModels){
+    for(i in seq(1,length(logLocation))){
+      if(i==1){
+        data=makeSSRsurfaceDataset(logLocation[[i]], profile_likelihood, numBins, maxSSR, ParameterNames, ReparameterizationDef, showInitialRange, Residual_function=Residual_function)
+        likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
+      }else{
+        data=makeSSRsurfaceDataset(logLocation[[i]], profile_likelihood, numBins, maxSSR, ParameterNames, ReparameterizationDef, showInitialRange, Residual_function=Residual_function)
+        likelihoodSurfacePlot_df=rbind(likelihoodSurfacePlot_df, data$likelihoodSurfacePlot_df)
+      }
+    }
+  }else{
+
+    data=makeSSRsurfaceDataset(logLocation, profile_likelihood, numBins, maxSSR, ParameterNames, ReparameterizationDef, showInitialRange, Residual_function=Residual_function)
+    likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
+  }
+
+ # data=makeSSRsurfaceDataset(logLocation, profile_likelihood, numBins, maxSSR, ParameterNames, ReparameterizationDef, showInitialRange, Residual_function=Residual_function)
+  #likelihoodSurfacePlot_df=data$likelihoodSurfacePlot_df
   #residual_variance=data$residual_variance
   reparaXinit=data$initialX
 
@@ -985,8 +1056,15 @@ plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBi
   if(profile_likelihood){
     #    likelihoodSurfacePlot_df=subset(likelihoodSurfacePlot_df, negative2LogLikelihood<=(2*(3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood))))
 
-    g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=negative2LogLikelihood))+ggplot2::geom_point()+ggplot2::geom_line()+
-      ggplot2::coord_cartesian(ylim=c(-3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood, na.rm=TRUE), ((4*3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood,na.rm=TRUE)))))
+    if(compareBetweenModels){
+      g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=negative2LogLikelihood, colour=runName))+ggplot2::geom_point()+ggplot2::geom_line()+
+        ggplot2::coord_cartesian(ylim=c(-3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood, na.rm=TRUE), ((4*3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood,na.rm=TRUE)))))
+
+    }else{
+      g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=negative2LogLikelihood))+ggplot2::geom_point()+ggplot2::geom_line()+
+        ggplot2::coord_cartesian(ylim=c(-3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood, na.rm=TRUE), ((4*3.84+min(likelihoodSurfacePlot_df$negative2LogLikelihood,na.rm=TRUE)))))
+
+    }
 
   }else{
     g=ggplot2::ggplot(likelihoodSurfacePlot_df, ggplot2::aes(x=value,y=minSSR))+ggplot2::geom_point()+ggplot2::geom_line()
@@ -1005,9 +1083,9 @@ plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBi
       Xinit_max=c(Xinit_max,max(reparaXinit[,i]))
     }
 
-    g=g+ggplot2:: geom_rect(data=data.frame(minBoundValue=Xinit_min, maxBoundValue=Xinit_max,parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xmin=minBoundValue, xmax=maxBoundValue, ymin=-Inf, ymax=Inf), alpha=0.3, fill="grey")
-    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_min, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray")
-    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_max, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray")
+    g=g+ggplot2:: geom_rect(data=data.frame(minBoundValue=Xinit_min, maxBoundValue=Xinit_max,parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xmin=minBoundValue, xmax=maxBoundValue, ymin=-Inf, ymax=Inf), alpha=0.3, fill="grey", inherit.aes = FALSE)
+    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_min, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray", inherit.aes = FALSE)
+    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_max, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray", inherit.aes = FALSE)
   }
 
   if(profile_likelihood){
@@ -1035,7 +1113,7 @@ Residual_matrix_function=function(CGNM_result, initial=FALSE){
   return(out)
 }
 
-prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDef=NA,numBins=NA, Residual_function=Residual_function_def){
+prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDef=NA,numBins=NA, Residual_function=Residual_function_def,silent=FALSE){
 
   CGNM_result=NULL
   minSSR=NULL
@@ -1136,6 +1214,7 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
 
   initiLNLfunc=CGNM_result$runSetting$nonlinearFunction
   rawXinit=CGNM_result$initialX
+  runName= CGNM_result$runSetting$runName
 
   residual_variance_vec=c()
 
@@ -1159,7 +1238,9 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
         R_nu=c(R_nu, tempR)
 
         if(checkNL){
-          print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
+          if(!silent){
+            print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
+          }
           # if(!identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
           #   warning(paste0("the nonlinear function used in this log in ",getwd(),"/",DirectoryName," is not the same as ",getwd(),"/",DirectoryName_vec[1]))
           # }
@@ -1246,7 +1327,7 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
   }
   #  residual_variance=residual_variance
   #  out=list(X_matrix=X_nu, R_vec=R_nu, ResVar_vec=ResVar_nu,negative2LogLikelihood=negative2LogLikelihood_nu,ParameterNames=names(X_nu),numBins=numBins, initialX=reparaXinit, ReparameterizationDef=Re_ReparameterizationDef)
-  out=list(X_matrix=X_nu, R_vec=R_nu,negative2LogLikelihood=negative2LogLikelihood_nu,ParameterNames=names(X_nu),numBins=numBins, initialX=reparaXinit, ReparameterizationDef=Re_ReparameterizationDef)
+  out=list(X_matrix=X_nu, R_vec=R_nu,negative2LogLikelihood=negative2LogLikelihood_nu,ParameterNames=names(X_nu),numBins=numBins, initialX=reparaXinit, ReparameterizationDef=Re_ReparameterizationDef, runName=runName)
 
   return(out)
 }
@@ -1265,6 +1346,7 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
 #' @param showInitialRange (default: TRUE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.
 #' @param alpha (default: 0.25) \emph{a number between 0 and 1} level of significance (all the points outside of this significance level will not be plotted when plot tyoe 1,2 or 4 are chosen).
 #' @param Likelihood_function (default: Residual_function_def) \emph{a function} that takes CGNM_result and initial then to calculate a quantity to be sketched in logscale e.g. SSR) this was implemented to conduct pos hoc drawing of the profile likelihood by providing the new definition of likelihood after all CGNM calculations are done.
+#' @param dependentVariable (default: NA) \emph{NA or a vector} can be specified as dependent variable for the parameter-parameter correlation plot (i.e., for the default case it is set as the -2 log-likelihood to plot 2D profile likelihood)
 #' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 #' @examples
 #'\dontrun{
@@ -1305,7 +1387,7 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
 #'  }
 #' @export
 #' @import ggplot2
-plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=2,plotMax=NA, ParameterNames=NA, ReparameterizationDef=NA,numBins=NA, showInitialRange=TRUE, alpha=0.25, Likelihood_function=Residual_function_def){
+plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=2,plotMax=NA, ParameterNames=NA, ReparameterizationDef=NA,numBins=NA, showInitialRange=TRUE, alpha=0.25, Likelihood_function=Residual_function_def, dependentVariable=NA){
 
   x_axis=NULL
   y_axis=NULL
@@ -1440,7 +1522,10 @@ plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=
       if(index_x!=index_y){
 
         boundData_df=rbind(boundData_df, data.frame(x_min=Xinit_min[index_x],x_max=Xinit_max[index_x],y_min=Xinit_min[index_y],y_max=Xinit_max[index_y],x_lab=preppedDataset_list$ParameterNames[index_x],y_lab=preppedDataset_list$ParameterNames[index_y]))
-        if(plotType=="count"){
+        if(length(dependentVariable)==dim(X_forPlot4)[1]){
+          aggData_df=data.frame(x_axis=X_forPlot4[,index_x],y_axis=X_forPlot4[,index_y],value=dependentVariable)
+
+        }else if(plotType=="count"){
 
           aggData_df=data.frame(aggregate(SSR_vec, by=list(X_rounded[,index_x],X_rounded[,index_y]), FUN="length"))
 
@@ -1519,7 +1604,7 @@ plot_2DprofileLikelihood=function(logLocation, index_x=NA, index_y=NA, plotType=
 
 
 
-makeSSRsurfaceDataset=function(logLocation, profile_likelihood=FALSE, numBins=NA, maxSSR=NA, ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE, Residual_function=Residual_function_def){
+makeSSRsurfaceDataset=function(logLocation, profile_likelihood=FALSE, numBins=NA, maxSSR=NA, ParameterNames=NA, ReparameterizationDef=NA, showInitialRange=FALSE, Residual_function=Residual_function_def, silent=FALSE){
 
   CGNM_result=NULL
   minSSR=NULL
@@ -1529,7 +1614,7 @@ makeSSRsurfaceDataset=function(logLocation, profile_likelihood=FALSE, numBins=NA
   initialX=NULL
 
 
-  temp_list=prepSSRsurfaceData(logLocation, ParameterNames, ReparameterizationDef, numBins, Residual_function=Residual_function)
+  temp_list=prepSSRsurfaceData(logLocation, ParameterNames, ReparameterizationDef, numBins, Residual_function=Residual_function, silent=silent)
   X_nu=temp_list$X_matrix
   R_nu=temp_list$R_vec
   #  ResVar_nu=temp_list$ResVar_vec
@@ -1539,6 +1624,7 @@ makeSSRsurfaceDataset=function(logLocation, profile_likelihood=FALSE, numBins=NA
   numBins=temp_list$numBins
   initialX=temp_list$initialX
   ReparameterizationDef=temp_list$ReparameterizationDef
+  runName=temp_list$runName
 
   likelihoodSurfacePlot_df=data.frame()
 
@@ -1566,6 +1652,8 @@ makeSSRsurfaceDataset=function(logLocation, profile_likelihood=FALSE, numBins=NA
 
     }
   }
+
+  likelihoodSurfacePlot_df$runName=runName
 
 
   #  ggplot(likelihoodSurfacePlot_df, aes(x=value,y=minSSR))+geom_point()+facet_wrap(.~parameterName,scales = "free")+geom_smooth()+ylim(0.5,1)

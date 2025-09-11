@@ -1,4 +1,77 @@
+
+repeatDetect=function(vector_in){
+  vector_nu=vector_in
+
+  first_index=1
+
+  firstIndex_vec=c()
+  lastIndex_vec=c()
+  value_vec=c()
+
+  while(length(vector_nu)>0){
+
+    indecies=which(vector_nu==vector_nu[1])
+
+    last_index=which(indecies-seq(1,length(indecies))!=0)[1]-1
+
+    if(is.na(last_index)){
+      last_index=length(indecies)
+    }
+
+    firstIndex_vec=c(firstIndex_vec,first_index)
+    lastIndex_vec=c(lastIndex_vec,last_index+first_index-1)
+    value_vec=c(value_vec, vector_nu[1])
+
+    if(is.na(last_index)|last_index==length(vector_nu)){
+      vector_nu=c()
+    }else{
+      vector_nu=vector_nu[seq(last_index+1,length(vector_nu))]
+      first_index=last_index+first_index
+    }
+  }
+
+  return(data.frame(firstIndex=firstIndex_vec, lastIndex=lastIndex_vec, value=value_vec))
+
+}
+
+condenseVec_toText=function(vector_in){
+  repeat_df=repeatDetect(vector_in)
+  out_text="c("
+
+  for(i in 1:nrow(repeat_df)){
+    if(repeat_df$firstIndex[i]==repeat_df$lastIndex[i]){
+      out_text=paste0(out_text, repeat_df$value[i],",")
+    }else{
+      out_text=paste0(out_text, "rep(", repeat_df$value[i], ",", repeat_df$lastIndex[i]-repeat_df$firstIndex[i]+1, "),")
+    }
+  }
+
+  out_text=paste0(substr(out_text,1,nchar(out_text)-1),")")
+  return(out_text)
+}
+
+
+condenseVec_toVec=function(vector_in){
+  repeat_df=repeatDetect(vector_in)
+  out_vec=c()
+
+  for(i in 1:nrow(repeat_df)){
+    if(repeat_df$firstIndex[i]==repeat_df$lastIndex[i]){
+      out_vec=c(out_vec, repeat_df$value[i])
+    }else{
+      out_vec=c(out_vec,paste0("rep(", repeat_df$value[i], ",", repeat_df$lastIndex[i]-repeat_df$firstIndex[i]+1, ")"))
+    }
+  }
+
+  return(out_vec)
+}
+
+
+
+
+
 pasteWithCollapse_WithApprox80charLimits=function(paste_vec, collapse){
+ # paste_vec=condenseVec_toVec(paste_vec)
   numTotalChar=nchar(paste(paste_vec, collapse = collapse))
   numToDivide=ceiling(numTotalChar/80)
   numPerDivide=ceiling(length(paste_vec)/numToDivide)
@@ -10,7 +83,6 @@ pasteWithCollapse_WithApprox80charLimits=function(paste_vec, collapse){
   }
 
   return(paste(outText_vec, collapse = gsub(",",",\n",collapse)))
-
 }
 
 
@@ -205,9 +277,13 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
             dose_df$dose[i],
             ", start.time=",
             dose_df$start.time[i],
-            ",dosing.to=\"",
+            ", dosing.to=\"",
             dose_df$dosing.to[i],
-            "\")"
+            "\", nbr.doses=",
+            dose_df$nbr.doses[i],
+            ", dosing.interval=",
+            dose_df$dosing.interval[i],
+            ")"
           )
         } else{
           dose_obs_Text = paste0(
@@ -219,9 +295,15 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
             dose_df$rate[i],
             ", start.time=",
             dose_df$start.time[i],
-            ",dosing.to=\"",
+            ", dosing.to=\"",
             dose_df$dosing.to[i],
-            "\")"
+            "\", nbr.doses=",
+            dose_df$nbr.doses[i],
+            ", dosing.interval=",
+            dose_df$dosing.interval[i],
+            ")"
+
+
           )
         }
       }
@@ -313,7 +395,7 @@ MO_values_vec=c(",
 
   testCode_text <-
     paste0(
-      "library(CGNM)\nlibrary(rxode2)\n\n",
+      "library(CGNM)\nlibrary(rxode2)\n#If you wish to rerun CGNM regardless of if there is a log file available set it to TRUE\nForceReEstimation=FALSE\n\n",
       odeCodeText,
       dataSet_text,
       parameterText,
@@ -418,6 +500,13 @@ residual_model=function(y_sim){
     out = paste0(
       out,
       "\n\n## CGNM R package above or equal to version 0.8.1 is necessary to run middle out method using MO_weights, MO_values options as implemented below."
+    )
+  }
+  if(bootstrap){
+    out=paste0(out, "\n\n", "if(!file.exists(\"",runName,"_CGNM_log_bootstrap/CGNM_bootstrapResult.RDATA\")|ForceReEstimation){"
+    )
+  }else{
+    out=paste0(out, "\n\n", "if(!file.exists(\"",runName,"_CGNM_log/CGNM_result.RDATA\")|ForceReEstimation){"
     )
   }
 
@@ -572,6 +661,11 @@ CGNM_result=Cluster_Gauss_Newton_method(model_matrix_function, ",
 
   }
 
+if(bootstrap){
+  out=paste0(out, "\n\n}else{\nload( file=\"",runName,"_CGNM_log_bootstrap/CGNM_bootstrapResult.RDATA\")\n}\n")
+}else{
+  out=paste0(out, "\n\n}else{\nload( file=\"",runName,"_CGNM_log/iteration_final.RDATA\")\n}\n")
+}
 
 
 if (ll$UseMO) {

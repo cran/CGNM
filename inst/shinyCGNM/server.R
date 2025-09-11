@@ -51,6 +51,24 @@ render_dt = function(data, editable = 'cell', server = TRUE, ...) {
   renderDT(data, selection = 'none', server = server, editable = editable, ...)
 }
 
+checkDoses=function(ll_in){
+  validEntriesDose = unique(c(ll_in$Dose_dat$dose, ll_in$Dose_dat$start.time, ll_in$Dose_dat$rate, ll_in$nbr.doses, ll_in$dosing.interval))
+  validEntriesDose=validEntriesDose[is.na(validEntriesDose)==FALSE]
+  validEntriesDose=validEntriesDose[(validEntriesDose)!=""]
+  validEntriesDose=validEntriesDose[(validEntriesDose)!=" "]
+  validEntriesDose=validEntriesDose[(validEntriesDose)!="\n"]
+
+  DOSEparameter=NA
+  shinyCatch(rv$DOSEparameter<<-extract_vars(as.formula(
+    paste(
+      "testExpression~",
+      paste(validEntriesDose, collapse = "+")
+    )
+  ))$rhs)
+
+  print(DOSEparameter)
+  return(DOSEparameter)
+}
 
 
 server <- function(input, output, session) {
@@ -65,13 +83,16 @@ server <- function(input, output, session) {
                      #  parameterNameVector = c(),
                      #  testCode_text = "",)
   )
+
   ll<-list(Dose_dat =
              data.frame(
                ID = rep("1", "1"),
                dose = NA,
                dosing.to = NA,
                start.time = "0",
-               rate = NA
+               rate = NA,
+               nbr.doses=1,
+               dosing.interval=NA
              ),
            parameterInfo_dat =
              data.frame(
@@ -103,7 +124,9 @@ server <- function(input, output, session) {
                dose = NA,
                dosing.to = NA,
                start.time = "0",
-               rate = NA
+               rate = NA,
+               nbr.doses="1",
+               dosing.interval=NA
              ),
              parameterInfo_dat =
                data.frame(
@@ -218,7 +241,9 @@ server <- function(input, output, session) {
                     dose = NA,
                     dosing.to = NA,
                     start.time = "0",
-                    rate = NA
+                    rate = NA,
+                    nbr.doses="1",
+                    dosing.interval=NA
                   ))
         }
         output[["dose_dt"]] <- renderDT({
@@ -250,8 +275,10 @@ server <- function(input, output, session) {
                     ID = rep(1, input$sim_numDoses - dim(sim_ll$Dose_dat)[1]),
                     dose = NA,
                     dosing.to = NA,
-                    start.time = 0,
-                    rate = NA
+                    start.time = "0",
+                    rate = NA,
+                    nbr.doses="1",
+                    dosing.interval=NA
                   ))
         }
         output[["sim_dose_dt"]] <- renderDT({
@@ -279,8 +306,13 @@ server <- function(input, output, session) {
       )))
     }else if(input$dose_dt_cell_edit$value!=""){
 
-      ll$Dose_dat <<- editData(ll$Dose_dat, input$dose_dt_cell_edit)
-      validEntriesDose = unique(c(ll$Dose_dat$dose, ll$Dose_dat$start.time, ll$Dose_dat$rate))
+
+      validEntriesDose = unique(c(ll$Dose_dat$dose, ll$Dose_dat$start.time, ll$Dose_dat$rate, ll$nbr.doses, ll$dosing.interval))
+      validEntriesDose=validEntriesDose[is.na(validEntriesDose)==FALSE]
+      validEntriesDose=validEntriesDose[(validEntriesDose)!=""]
+      validEntriesDose=validEntriesDose[(validEntriesDose)!=" "]
+      validEntriesDose=validEntriesDose[(validEntriesDose)!="\n"]
+
       shinyCatch(rv$DOSEparameter<<-extract_vars(as.formula(
         paste(
           "testExpression~",
@@ -301,14 +333,18 @@ server <- function(input, output, session) {
 
 
   observe({
-    validEntriesDose = unique(c(ll$Dose_dat$dose, ll$Dose_dat$start.time, ll$Dose_dat$rate))
+    validEntriesDose = unique(c(ll$Dose_dat$dose, ll$Dose_dat$start.time, ll$Dose_dat$rate, ll$nbr.doses, ll$dosing.interval))
+    validEntriesDose=validEntriesDose[is.na(validEntriesDose)==FALSE]
+    validEntriesDose=validEntriesDose[(validEntriesDose)!=""]
+    validEntriesDose=validEntriesDose[(validEntriesDose)!=" "]
+    validEntriesDose=validEntriesDose[(validEntriesDose)!="\n"]
+
     shinyCatch(rv$DOSEparameter<<-extract_vars(as.formula(
       paste(
         "testExpression~",
         paste(validEntriesDose, collapse = "+")
       )
     ))$rhs)
-
     output$DOSE_para = renderText(paste(rv$DOSEparameter, collapse = ", "))
   }
   )
@@ -326,7 +362,6 @@ server <- function(input, output, session) {
     }else if(input$sim_dose_dt_cell_edit$value!=""){
 
       sim_ll$Dose_dat <<- editData(sim_ll$Dose_dat, input$sim_dose_dt_cell_edit)
-      validEntriesDose = unique(c(sim_ll$Dose_dat$dose, sim_ll$Dose_dat$start.time, sim_ll$Dose_dat$rate))
     }
 
     sim_ll$Dose_dat <<- editData(sim_ll$Dose_dat, input$sim_dose_dt_cell_edit)
@@ -341,14 +376,18 @@ server <- function(input, output, session) {
 
 
   observe({
-    validEntriesDose = unique(c(sim_ll$Dose_dat$dose, sim_ll$Dose_dat$start.time, sim_ll$Dose_dat$rate))
+    validEntriesDose = unique(c(ll$Dose_dat$dose, ll$Dose_dat$start.time, ll$Dose_dat$rate, ll$nbr.doses, ll$dosing.interval))
+    validEntriesDose=validEntriesDose[is.na(validEntriesDose)==FALSE]
+    validEntriesDose=validEntriesDose[(validEntriesDose)!=""]
+    validEntriesDose=validEntriesDose[(validEntriesDose)!=" "]
+    validEntriesDose=validEntriesDose[(validEntriesDose)!="\n"]
+
     shinyCatch(rv$DOSEparameter<<-extract_vars(as.formula(
       paste(
         "testExpression~",
         paste(validEntriesDose, collapse = "+")
       )
     ))$rhs)
-
     output$DOSE_para = renderText(paste(rv$DOSEparameter, collapse = ", "))
   }
   )
@@ -657,7 +696,7 @@ server <- function(input, output, session) {
 
 ## Change the values below to be the middle out values. (The values used below initially are the mean of the lower and upper range.)
 ",
-           paste(paste0("middleOutValue_",ll$parameterInfo_dat$ParameterName,"=", (as.numeric(ll$parameterInfo_dat$Initial_lower_range)+as.numeric(ll$parameterInfo_dat$Initial_upper_range))/2), collapse = "\n"),"
+           paste(paste0(ll$parameterInfo_dat$ParameterName,"=", (as.numeric(ll$parameterInfo_dat$Initial_lower_range)+as.numeric(ll$parameterInfo_dat$Initial_upper_range))/2), collapse = "\n"),"
 
 postHoc_likelihood=function(CGNM_result, initial=FALSE){
 
@@ -676,8 +715,9 @@ if(initial){
 ## If one wishes to do middle out in normal scale make changes to the following code by removing log10
 out=cbind(out,
 ",
+  #paste0("    weight_",ll$parameterInfo_dat$ParameterName,"*(log10(eval(parse(text=CGNM_result$runSetting$ReparameterizationDef[",seq(1,length(ll$parameterInfo_dat$ParameterName)),"])))-", paste0("log10(middleOutValue_",ll$parameterInfo_dat$ParameterName),"))", collapse = ",\n"),
 
-  paste0("    weight_",ll$parameterInfo_dat$ParameterName,"*(log10(eval(parse(text=CGNM_result$runSetting$ReparameterizationDef[",seq(1,length(ll$parameterInfo_dat$ParameterName)),"])))-", paste0("log10(middleOutValue_",ll$parameterInfo_dat$ParameterName),"))", collapse = ",\n"),
+  paste0(paste0("    weight_",ll$parameterInfo_dat$ParameterName,"*(x",seq(1,length(ll$parameterInfo_dat$ParameterName)),"-", "eval(parse(text=CGNM_result$runSetting$ParameterTransFormationDef[",seq(1,length(ll$parameterInfo_dat$ParameterName)),"])))"), collapse = ",\n"),
   "
 )
 
@@ -1079,9 +1119,13 @@ puttogether_simulation_code = function() {
             dose_df$dose[i],
             ", start.time=",
             dose_df$start.time[i],
-            ",dosing.to=\"",
+            ", dosing.to=\"",
             dose_df$dosing.to[i],
-            "\")"
+            "\", nbr.doses=",
+            dose_df$nbr.doses[i],
+            ", dosing.interval=",
+            dose_df$dosing.interval[i],
+            ")"
           )
         } else{
           dose_obs_Text = paste0(
@@ -1093,9 +1137,13 @@ puttogether_simulation_code = function() {
             dose_df$rate[i],
             ", start.time=",
             dose_df$start.time[i],
-            ",dosing.to=\"",
+            ", dosing.to=\"",
             dose_df$dosing.to[i],
-            "\")"
+            "\", nbr.doses=",
+            dose_df$nbr.doses[i],
+            ", dosing.interval=",
+            dose_df$dosing.interval[i],
+            ")"
           )
         }
       }
@@ -2149,26 +2197,50 @@ observeEvent(input_dose_csv_file(), {
     if(sum(names(Dose_dat_read)%in% c("ID","dose","dosing.to","start.time","rate"))==5){
       validData=TRUE
       Dose_dat_read=Dose_dat_read[, c("ID","dose","dosing.to","start.time","rate")]
+      Dose_dat_read$nbr.doses=1
+      Dose_dat_read$dosing.interval=NA
     }else if (dim(Dose_dat_read)[2]==5){
       validData=TRUE
       names(Dose_dat_read)= c("ID","dose","dosing.to","start.time","rate")
+      message("The name did not match with the standarad naming so we assumed the columns are in the order of ID, dose, dosing.to, start.time, and rate")
+      Dose_dat_read$nbr.doses=1
+      Dose_dat_read$dosing.interval=NA
+    }else if(sum(names(Dose_dat_read)%in% c("ID","dose","dosing.to","start.time","rate", "nbr.doses", "dosing.interval"))==7){
+      validData=TRUE
+      Dose_dat_read=Dose_dat_read[, c("ID","dose","dosing.to","start.time","rate", "nbr.doses", "dosing.interval")]
+    }else if (dim(Dose_dat_read)[2]==7){
+      validData=TRUE
+      names(Dose_dat_read)= c("ID","dose","dosing.to","start.time","rate", "nbr.doses", "dosing.interval")
+      message("The name did not match with the standarad naming so we assumed the columns are in the order of ID, dose, dosing.to, start.time, rate, nbr.doses, and dosing.interval")
     }else{
-      shinyCatch(stop("csv file with dosing information needs to have exactly 5 columns containing ID, dose, dosing.to, start.time, and rate."))
+      shinyCatch(stop("csv file with dosing information needs to have either 5 or 7 columns containing ID, dose, dosing.to, start.time, rate, (nbr.doses, and dosing.interval)."))
     }
 
     if(validData){
       updateNumericInput(session, "numDoses", value = dim(Dose_dat_read)[1])
+      Dose_dat_read$ID=as.character(Dose_dat_read$ID)
+      Dose_dat_read$dosing.to=as.character(Dose_dat_read$dosing.to)
+      Dose_dat_read$start.time=as.character(Dose_dat_read$start.time)
+      Dose_dat_read$rate=as.character(Dose_dat_read$rate)
+      Dose_dat_read$dose=as.character(Dose_dat_read$dose)
+      Dose_dat_read$nbr.doses=as.numeric(Dose_dat_read$nbr.doses)
+      Dose_dat_read$dosing.interval=as.numeric(Dose_dat_read$dosing.interval)
 
       if (!identical(Dose_dat_read, ll$Dose_dat)) {
         ll$Dose_dat <<-Dose_dat_read
-        validEntriesDose = unique(c(ll$Dose_dat$dose, ll$Dose_dat$start.time, ll$Dose_dat$rate))
+
+        validEntriesDose = unique(c(ll$Dose_dat$dose, ll$Dose_dat$start.time, ll$Dose_dat$rate, ll$nbr.doses, ll$dosing.interval))
+        validEntriesDose=validEntriesDose[is.na(validEntriesDose)==FALSE]
+        validEntriesDose=validEntriesDose[(validEntriesDose)!=""]
+        validEntriesDose=validEntriesDose[(validEntriesDose)!=" "]
+        validEntriesDose=validEntriesDose[(validEntriesDose)!="\n"]
+
         shinyCatch(rv$DOSEparameter<<-extract_vars(as.formula(
           paste(
             "testExpression~",
             paste(validEntriesDose, collapse = "+")
           )
         ))$rhs)
-
         output[["dose_dt"]] <- renderDT({
           datatable(
             ll$Dose_dat,
@@ -2184,6 +2256,8 @@ observeEvent(input_dose_csv_file(), {
 
   }
 })
+
+
 
 
 ## Read simulation dose csv ----
@@ -2204,18 +2278,38 @@ observeEvent(input_sim_dose_csv_file(), {
 
     validData=FALSE
 
+
     if(sum(names(Dose_dat_read)%in% c("ID","dose","dosing.to","start.time","rate"))==5){
       validData=TRUE
       Dose_dat_read=Dose_dat_read[, c("ID","dose","dosing.to","start.time","rate")]
+      Dose_dat_read$nbr.doses=1
+      Dose_dat_read$dosing.interval=NA
     }else if (dim(Dose_dat_read)[2]==5){
       validData=TRUE
       names(Dose_dat_read)= c("ID","dose","dosing.to","start.time","rate")
+      message("The name did not match with the standarad naming so we assumed the columns are in the order of ID, dose, dosing.to, start.time, and rate")
+      Dose_dat_read$nbr.doses=1
+      Dose_dat_read$dosing.interval=NA
+    }else if(sum(names(Dose_dat_read)%in% c("ID","dose","dosing.to","start.time","rate", "nbr.doses", "dosing.interval"))==7){
+      validData=TRUE
+      Dose_dat_read=Dose_dat_read[, c("ID","dose","dosing.to","start.time","rate", "nbr.doses", "dosing.interval")]
+    }else if (dim(Dose_dat_read)[2]==7){
+      validData=TRUE
+      names(Dose_dat_read)= c("ID","dose","dosing.to","start.time","rate", "nbr.doses", "dosing.interval")
+      message("The name did not match with the standarad naming so we assumed the columns are in the order of ID, dose, dosing.to, start.time, rate, nbr.doses, and dosing.interval")
     }else{
-      shinyCatch(stop("csv file with dosing information needs to have exactly 5 columns containing ID, dose, dosing.to, start.time, and rate."))
+      shinyCatch(stop("csv file with dosing information needs to have either 5 or 7 columns containing ID, dose, dosing.to, start.time, rate, (nbr.doses, and dosing.interval)."))
     }
 
     if(validData){
       updateNumericInput(session, "sim_numDoses", value = dim(Dose_dat_read)[1])
+      Dose_dat_read$ID=as.character(Dose_dat_read$ID)
+      Dose_dat_read$dosing.to=as.character(Dose_dat_read$dosing.to)
+      Dose_dat_read$start.time=as.character(Dose_dat_read$start.time)
+      Dose_dat_read$rate=as.character(Dose_dat_read$rate)
+      Dose_dat_read$dose=as.character(Dose_dat_read$dose)
+      Dose_dat_read$nbr.doses=as.numeric(Dose_dat_read$nbr.doses)
+      Dose_dat_read$dosing.interval=as.numeric(Dose_dat_read$dosing.interval)
 
       if (!identical(Dose_dat_read, sim_ll$Dose_dat)) {
         sim_ll$Dose_dat <<-Dose_dat_read
@@ -2423,6 +2517,11 @@ restoreState_function = function(rs) {
   updateTextInput(session, "runNameText", value = rs$runName)
 
   compileODE_func(rs$ODE_text)
+
+  if(length(names(rs$Dose_dat))==5){
+    rs$Dose_dat$nbr.doses=1
+    rs$Dose_dat$dosing.interval=NA
+  }
 
   if (!identical(rs$Dose_dat, ll$Dose_dat)) {
     ll$Dose_dat <<- rs$Dose_dat

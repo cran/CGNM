@@ -13,7 +13,8 @@ plot_SSRsurface(
   ParameterNames = NA,
   ReparameterizationDef = NA,
   showInitialRange = FALSE,
-  Residual_function = Residual_function_def
+  Residual_function = Residual_function_def,
+  compareBetweenModels = FALSE
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ plot_SSRsurface(
 \item{showInitialRange}{(default: FALSE) \emph{TRUE or FALSE} if TRUE then the initial range appears in the plot.}
 
 \item{Residual_function}{(default: Residual_function_def) \emph{a function} that takes CGNM_result and initial then to calculate a quantity to be sketched in logscale e.g. SSR) this was implemented to conduct pos hoc drawing of the profile likelihood by providing the new definition of likelihood after all CGNM calculations are done.}
+
+\item{compareBetweenModels}{(default: FALSE) used for the implementation of compare_profileLikelihood so do not use when calling plot_SSRsurface function.}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
