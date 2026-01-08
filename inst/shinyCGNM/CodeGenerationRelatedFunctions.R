@@ -216,7 +216,7 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
 
   dataSet_text = paste0(
     #"\n\ndataSet=data.frame(seq=seq(1,",
-    "\n\n",ifelse(for_simulation,"simulationDataSkelton", "dataSet"),"<<-data.frame(seq=seq(1,",
+    "\n\n",ifelse(for_simulation,"simulationDataSkelton", "dataSet"),"<<-subset(data.frame(seq=seq(1,",
 
     dim(ll$ObservedData_dat)[1],
     "),
@@ -232,8 +232,10 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
     "),")),"
       Observation_expression=c(\"",
     pasteWithCollapse_WithApprox80charLimits(ll$ObservedData_dat$Observation_expression, collapse = "\",\""),
-    "\"))\n"
-  )
+    "\"))",ifelse(!for_simulation,
+",!is.na(Observed_value))",")\n\n
+uniqueTime=unique(simulationDataSkelton$time)\n"
+  ))
 
   dose_obs_Text = paste0("\n\nsimResult_df=data.frame()\n")
 
@@ -309,15 +311,18 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
       }
     }
 
+   # ifelse(for_simulation,"uniqueTime",)
+
 
     if (dim(obs_df)[1] > 0) {
-      dose_obs_Text = paste0(
+      dose_obs_Text =paste0(
         dose_obs_Text,
-        "\n      ev$add.sampling(c(",
+        "\n      ev$add.sampling(",ifelse(for_simulation,"uniqueTime",paste0("c(",
         paste(sort(as.numeric(
           unique(obs_df$time)
         )), collapse = ", "),
-        "))\n      odeSol=compiledModel$solve(modelingParameter, ev)"
+        ")")),
+        ")\n      odeSol=compiledModel$solve(modelingParameter, ev)"
       )
 
       uniqueObsVariables = unique(obs_df$Observation_expression)
@@ -332,6 +337,13 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
           "\", time=odeSol[,\"time\"], ID=\"",
           ID_nu,
           "\"))"
+        )
+      }
+
+      if(for_simulation){
+        dose_obs_Text=paste0(dose_obs_Text, paste0("\n\n      for(i in seq(2,dim(odeSol)[2])){
+        simResult_df=rbind(simResult_df,data.frame(value=odeSol[,i], Observation_expression = colnames(odeSol)[i], time=odeSol[,1], ID=\"",ID_nu,"\"))
+      }")
         )
       }
     }
@@ -395,7 +407,7 @@ MO_values_vec=c(",
 
   testCode_text <-
     paste0(
-      "library(CGNM)\nlibrary(rxode2)\n#If you wish to rerun CGNM regardless of if there is a log file available set it to TRUE\nForceReEstimation=FALSE\n\n",
+      "library(CGNM)\nlibrary(rxode2)\n\n",ifelse(for_simulation,"","#If you wish to rerun CGNM regardless of if there is a log file available set it to TRUE\nForceReEstimation=FALSE\n\n"),
       odeCodeText,
       dataSet_text,
       parameterText,

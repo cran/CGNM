@@ -1,7 +1,7 @@
 Package: CGNM
 Type: Package
 Title: Cluster Gauss-Newton Method
-Version: 0.9.2
+Version: 0.9.3
 Author: Yasunori Aoki [aut, cre]
 Authors@R: person(given = "Yasunori",
                     family = "Aoki",
@@ -16,7 +16,7 @@ Suggests: knitr, rmarkdown
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2025-09-10 06:09:57 UTC; yaoki
+Packaged: 2026-01-08 08:48:08 UTC; yaoki
 Depends: R (>= 3.5.0)
 Repository: CRAN
-Date/Publication: 2025-09-11 07:20:12 UTC
+Date/Publication: 2026-01-08 15:40:07 UTC

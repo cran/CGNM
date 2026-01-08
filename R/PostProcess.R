@@ -262,7 +262,7 @@ acceptedMaxSSR=function(CGNM_result, cutoff_pvalue=0.05, numParametersIncluded=N
       numAccept=sum(accept_vec, na.rm = TRUE)
       acceptMaxSSR=strictMaxAcceptSSR
     }
-
+## numPara*log(R_nu)+qchisq(1-alpha,1)
 
   }else if(is.na(numParametersIncluded)|numParametersIncluded>length(SSR_vec)){
     acceptMaxSSR=max(SSR_vec, na.rm = TRUE)

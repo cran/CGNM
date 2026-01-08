@@ -912,7 +912,13 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
     message(paste("Generating initial cluster.",sum(is_alive),"out of",num_minimizersToFind,"done"))
 
     if(sum(is_alive)==0){
+
+      ## this error message is not tested yet
       message("It is most likely that either nonlinearfunction definition, intial range selection, or targetVector definition is incorrect. Stop the CGNM run and fix the issue.")
+      message("an example of targetMatrix: ", targetMatrix[1,])
+      message("an example of evaluated function: ", Y[1,])
+      message("Any non-numerical values on these may give you a clue for this issue.")
+      stop()
     }
   }
 
