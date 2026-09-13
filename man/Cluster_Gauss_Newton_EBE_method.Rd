@@ -11,6 +11,7 @@ Cluster_Gauss_Newton_EBE_method(
   numRepeat = 1,
   keepInitialDistribution = NA,
   algorithmParameter_EBEweight = 1,
+  outputS4 = FALSE,
   ...
 )
 }
@@ -26,6 +27,8 @@ Cluster_Gauss_Newton_EBE_method(
 \item{keepInitialDistribution}{(default: NA) \emph{A vector of TRUE or FALSE} of length n User can specify if the initial distribution of one of the input variable (e.g. parameter) to be kept as the initial iterate throughout CGNM iterations.}
 
 \item{algorithmParameter_EBEweight}{(default: 9) \emph{A number}}
+
+\item{outputS4}{(default: FALSE) \emph{TRUE or FALSE} if set TRUE, the result is returned as a \code{\link{CGNM_result-class}} S4 object instead of the classic list (accessed identically via \code{$}/\code{[[ ]]}). If \code{CGNM_result} was already an S4 object (i.e. it came from a call with \code{outputS4 = TRUE}), the output is an S4 object regardless of this argument.}
 
 \item{...}{Further arguments to be supplied to nonlinearFunction}
 }

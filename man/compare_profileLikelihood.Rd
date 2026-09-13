@@ -33,7 +33,7 @@ compare_profileLikelihood(
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 }
 \description{
-Draw profile likelihood surface using the function evaluations conducted during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().  The grey horizontal line is the threshold for 95% pointwise confidence interval.
+Draw profile likelihood surface using the function evaluations conducted during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().  The grey horizontal line is the threshold for 95\% pointwise confidence interval.
 }
 \examples{
 \dontrun{

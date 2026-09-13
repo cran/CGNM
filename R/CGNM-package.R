@@ -1,0 +1,88 @@
+#' CGNM: Cluster Gauss-Newton Method
+#'
+#' @description
+#' Cluster Gauss-Newton method (CGNM) finds multiple approximate minimizers of a
+#' nonlinear least squares problem \eqn{argmin_x||f(x)-y*||}, without assuming the
+#' minimizer is unique. In the context of model fitting, \code{f} is the model,
+#' \code{x} is the parameter vector, and \code{y*} is the observed data.
+#'
+#' @section Typical workflow:
+#' \enumerate{
+#'   \item \code{\link{Cluster_Gauss_Newton_method}} — fit the model; returns a
+#'     \code{CGNM_result} list (fields \code{X}, \code{Y}, \code{residual_history},
+#'     \code{initialX}, \code{runSetting}).
+#'   \item \code{\link{Cluster_Gauss_Newton_Bootstrap_method}} (optional) — residual
+#'     resampling bootstrap using the fit above, for uncertainty quantification.
+#'   \item \code{\link{acceptedApproximateMinimizers}} / \code{\link{acceptedIndices}} /
+#'     \code{\link{bestApproximateMinimizers}} — select the subset of the found
+#'     minimizers considered to have converged to (approximately) the same
+#'     minimum sum of squared residuals.
+#'   \item \code{\link{table_parameterSummary}} — tabulate parameter estimates
+#'     across the accepted minimizers.
+#'   \item \code{\link{plot_Rank_SSR}}, \code{\link{plot_goodnessOfFit}},
+#'     \code{\link{plot_paraDistribution_byHistogram}},
+#'     \code{\link{plot_paraDistribution_byViolinPlots}},
+#'     \code{\link{plot_parameterValue_scatterPlots}},
+#'     \code{\link{plot_profileLikelihood}},
+#'     \code{\link{plot_2DprofileLikelihood}} — visualize the fit
+#'     (\pkg{ggplot2} must be loaded by the user).
+#' }
+#'
+#' @section Conventions worth knowing before calling these functions:
+#' \itemize{
+#'   \item \strong{"Unset" is \code{NA}, not \code{NULL}.} Arguments such as
+#'     \code{lowerBound}, \code{upperBound}, \code{ParameterNames}, and
+#'     \code{initialIterateMatrix} default to \code{NA} to mean "not supplied".
+#'     Passing \code{NULL} instead of \code{NA} may error rather than being
+#'     treated as unset.
+#'   \item \strong{\code{saveLog=TRUE} is the default} for
+#'     \code{Cluster_Gauss_Newton_method()} and writes iteration history to a
+#'     \code{CGNM_log} (or \code{CGNM_log_<runName>}) folder under the current
+#'     working directory. \code{\link{plot_profileLikelihood}},
+#'     \code{\link{compare_profileLikelihood}},
+#'     \code{\link{table_profileLikelihoodConfidenceInterval}},
+#'     \code{\link{plot_SSRsurface}}, \code{\link{suggestInitialLowerRange}},
+#'     and \code{\link{suggestInitialUpperRange}} all need that per-iteration
+#'     history (a single final result normally only keeps the first and last
+#'     iteration); they accept the folder path (a string, or vector of
+#'     strings), the classic list (looked up from the object's own
+#'     \code{runName}, so the log must still be on disk), or an
+#'     \code{outputS4 = TRUE} object that retains this history in memory (see
+#'     below) and needs no disk access at all.
+#'   \item \code{nonlinearFunction} may be written either as vector-in/vector-out
+#'     (one parameter set at a time) or matrix-in/matrix-out (one parameter set
+#'     per row, for parallelization); see the \strong{Parallel computation}
+#'     section of \code{vignette("CGNM-vignette", package = "CGNM")}.
+#'   \item \strong{The classic return value is a plain list, unless you opt into
+#'     \code{outputS4 = TRUE}.} \code{\link{Cluster_Gauss_Newton_method}},
+#'     \code{\link{Cluster_Gauss_Newton_Bootstrap_method}}, and
+#'     \code{\link{Cluster_Gauss_Newton_EBE_method}} all accept this argument
+#'     (default \code{FALSE}) and return a \code{\link{CGNM_result-class}} S4
+#'     object instead, with every field still reachable via \code{$}/\code{[[}
+#'     exactly as on the list, so all postprocessing/plotting functions accept
+#'     either form unmodified. This lets calling code confirm
+#'     \code{inherits(x, "CGNM_result")} instead of assuming a bare list has
+#'     the right shape. It also retains the per-iteration history needed for
+#'     the profile-likelihood functions above (main fit, and the bootstrap
+#'     run's own history too if \code{\link{Cluster_Gauss_Newton_Bootstrap_method}}
+#'     is subsequently run on the object), so those functions work directly on
+#'     the returned object with no \code{saveLog}/disk dependency at all.
+#' }
+#'
+#' See \code{vignette("CGNM-vignette", package = "CGNM")} for a full worked
+#' example, and the top-level \code{CLAUDE.md} / \code{README.md} in the package
+#' source repository for a condensed quick-start reference.
+#'
+#' @references
+#' Aoki et al. (2020) Cluster Gauss-Newton method. Optimization and Engineering,
+#' 1-31. \doi{10.1007/s11081-020-09571-2}
+#'
+#' Aoki and Sugiyama (2024) Cluster Gauss-Newton method for a quick approximation
+#' of profile likelihood: With application to physiologically-based
+#' pharmacokinetic models. CPT Pharmacometrics Syst Pharmacol. 13(1):54-67.
+#' \doi{10.1002/psp4.13055}
+#'
+#' @keywords internal
+"_PACKAGE"
+
+utils::globalVariables(c("ID", "VaryByID"))

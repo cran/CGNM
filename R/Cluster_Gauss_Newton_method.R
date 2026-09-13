@@ -376,15 +376,19 @@ CGNM_input_test <- function(nonlinearFunction,  targetVector, initial_lowerRange
 #' @param weightMatrix (default: NA) \emph{A matrix} with dimension num_minimizersToFind x m  User can define multiple weight vectors in the matrix form to weight the observations.  This input is mainly used when running case sampling bootstrap method and not intended to be used for other purposes.
 #' @param MO_weights (default: NA) \emph{A numeric vector} where the weights for the middle out methods are specified.  The length of the vector should be the same as the number of parameters. MO can be used to incoperate prior knowledge of the parameter to be estimated, weight indicate an arbitrary confidence for the prior information. (MO method is still under methodological development.)
 #' @param MO_values (default: NA) \emph{A numeric vector} where the values for the middle out methods are specified.  The length of the vector should be the same as the number of parameters. MO can be used to incoperate prior knowledge of the parameter to be estimated. (MO method is still under methodological development.)
+#' @param outputS4 (default: FALSE) \emph{TRUE or FALSE} if set TRUE, the result is returned as a \code{\link{CGNM_result-class}} S4 object instead of the classic list. Every field of the classic list is still accessible via \code{$} or \code{[[ ]]} on the S4 object (e.g. \code{result$X}), so existing postprocessing/plotting functions accept either form unchanged. Setting this TRUE also retains the full per-iteration parameter/output history (normally discarded once the final result is assembled), so \code{\link{plot_profileLikelihood}}, \code{\link{plot_SSRsurface}}, \code{\link{table_profileLikelihoodConfidenceInterval}}, \code{\link{suggestInitialLowerRange}}, and \code{\link{suggestInitialUpperRange}} can be used directly on the returned object with no dependency on \code{saveLog}/disk/working directory; this adds memory roughly proportional to \code{num_iteration * num_minimizersToFind * (n + m)}. Default is FALSE so existing code that expects a list, and the default memory footprint, are unaffected.
+#' @param varianceExponent (default: 0) \emph{A non-negative number} [[experimental]] sets a proportional (heteroscedastic) residual weight of \code{1/nonlinearFunction(x)^varianceExponent} (capped to avoid extreme weights), which is applied on top of \code{weightMatrix} if that is also given. The default of 0 leaves the residual weighting unchanged (equivalent to not using this option). Useful when the variance of the observation is expected to scale with its magnitude, as is common for e.g. concentration data spanning multiple orders of magnitude.
 #' @param ... Further arguments to be supplied to nonlinearFunction
 #' @return list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
 #' \enumerate{\item X: \emph{a num_minimizersToFind by n matrix} which stores the approximate minimizers of the nonlinear least squares in each row. In the context of model fitting they are \strong{the estimated parameter sets}.
 #' \item Y: \emph{a num_minimizersToFind by m matrix} which stores the nonlinearFunction evaluated at the corresponding approximate minimizers in matrix X above. In the context of model fitting each row corresponds to \strong{the model simulations}.
-#' \item residual_history: \emph{a num_iteration by num_minimizersToFind matrix} storing sum of squares residual for all iterations.
+#' \item residual_history: \emph{a num_minimizersToFind by (num_iteration+1) matrix} storing the sum of squares residual of each approximate minimizer (rows) at each iteration including the initial iterate (columns).
 #' \item initialX: \emph{a num_minimizersToFind by n matrix} which stores the set of initial iterates.
 #' \item runSetting: a list containing all the input variables to Cluster_Gauss_Newton_method (i.e., nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ,algorithmParameter_initialLambda, algorithmParameter_gamma, num_minimizersToFind, num_iteration, saveLog, runName, textMemo).}
 #' @examples
-#' ##lip-flop kinetics (an example known to have two distinct solutions)
+#' ## Example 1 (start here): flip-flop kinetics defined as a plain R function
+#' ## (an example known to have two distinct solutions). This is the minimal,
+#' ## recommended pattern for calling Cluster_Gauss_Newton_method().
 #'
 #'model_analytic_function=function(x){
 #'
@@ -412,7 +416,10 @@ CGNM_input_test <- function(nonlinearFunction,  targetVector, initial_lowerRange
 #'
 #' acceptedApproximateMinimizers(CGNM_result)
 #'
-#  ## flip-flop kinetics using RxODE (an example known to have two distinct solutions)
+#' ## Example 2 (optional, advanced): the same flip-flop kinetics model defined
+#' ## as an ODE system via the RxODE package, to illustrate fitting simulator-
+#' ## based models. Requires the RxODE package (not a dependency of CGNM), so
+#' ## this example is not run automatically.
 #' \dontrun{
 #' library(RxODE)
 #'
@@ -443,7 +450,7 @@ CGNM_input_test <- function(nonlinearFunction,  targetVector, initial_lowerRange
 #'
 #' @export
 #' @import stats MASS
-Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_lowerRange, initial_upperRange , lowerBound=NA, upperBound=NA, ParameterNames=NA, stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=TRUE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, weightMatrix=NA, keepInitialDistribution=NA, MO_weights=NA, MO_values=NA,... ){
+Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_lowerRange, initial_upperRange , lowerBound=NA, upperBound=NA, ParameterNames=NA, stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=TRUE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, weightMatrix=NA, keepInitialDistribution=NA, MO_weights=NA, MO_values=NA, outputS4=FALSE, varianceExponent=0,... ){
   MO_weights_in=MO_weights
   MO_values_in=MO_values
 
@@ -675,7 +682,7 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_
   }
 
 
-  out=Cluster_Gauss_Newton_method_core(nonlinearFunction_varTrans, targetVector=targetVector, initial_lowerRange=X_LR, initial_upperRange=X_UR ,lowerBound=lowerBound, upperBound=upperBound, stayIn_initialRange, num_minimizersToFind, num_iteration, saveLog, runName, textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix, targetMatrix, keepInitialDistribution, weightMatrix,ParameterNames,ReparameterizationDef, ParameterTransFormationDef, ... )
+  out=Cluster_Gauss_Newton_method_core(nonlinearFunction_varTrans, targetVector=targetVector, initial_lowerRange=X_LR, initial_upperRange=X_UR ,lowerBound=lowerBound, upperBound=upperBound, stayIn_initialRange, num_minimizersToFind, num_iteration, saveLog, runName, textMemo,algorithmParameter_initialLambda, algorithmParameter_gamma, algorithmVersion, initialIterateMatrix, targetMatrix, keepInitialDistribution, weightMatrix,ParameterNames,ReparameterizationDef, ParameterTransFormationDef, keepIterationHistory=outputS4, varianceExponent=varianceExponent, ... )
 
   out_X=as.data.frame(out$X)
   names(out_X)=paste0("x",seq(1,dim(out_X)[2]))
@@ -699,11 +706,15 @@ Cluster_Gauss_Newton_method <- function(nonlinearFunction,targetVector, initial_
   }
 
 
+  if(outputS4){
+    out <- as_CGNM_result_S4(out)
+  }
+
   return(out)
 }
 
 
-Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, keepInitialDistribution=NA,weightMatrix=NA,ParameterNames=NA,ReparameterizationDef=NA, ParameterTransFormationDef=NA, lowerBound=NA, upperBound=NA, folderSuffix="", ... ){
+Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange , stayIn_initialRange=FALSE, num_minimizersToFind=250, num_iteration=25, saveLog=FALSE, runName="", textMemo="",algorithmParameter_initialLambda=1, algorithmParameter_gamma=2, algorithmVersion=3.0, initialIterateMatrix=NA, targetMatrix=NA, keepInitialDistribution=NA,weightMatrix=NA,ParameterNames=NA,ReparameterizationDef=NA, ParameterTransFormationDef=NA, lowerBound=NA, upperBound=NA, folderSuffix="", keepIterationHistory=FALSE, varianceExponent=0, ... ){
 
   if(sum(is.na(targetVector))>0|sum(is.nan(targetVector))>0){
     stop("targetVector contains NA or NAN")
@@ -737,18 +748,9 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
     num_minimizersToFind=dimInitialIterateMatrix[1]
   }
 
-  weightMatrix_forRes=weightMatrix
-
-  if(!is.matrix(weightMatrix_forRes)){
-    weightMatrix_forRes=matrix(1, nrow = num_minimizersToFind, ncol = length(targetVector))
-  }else if(dim(weightMatrix_forRes)[1]!=num_minimizersToFind|dim(weightMatrix_forRes)[2]!=length(targetVector)){
-    message("Wrong size of weightMatrix is given so all weight will be set to one.")
-    weightMatrix_forRes=matrix(1, nrow = num_minimizersToFind, ncol = length(targetVector))
-  }
-
 
   textMemo=paste0("CGNM algorithm version ",algorithmVersion,"\n\n",textMemo)
-  runSetting=list(nonlinearFunction=nonlinearFunction, targetVector=targetVector, initial_lowerRange=initial_lowerRange, initial_upperRange=initial_upperRange, stayIn_initialRange=stayIn_initialRange,algorithmParameter_initialLambda=algorithmParameter_initialLambda, algorithmParameter_gamma=algorithmParameter_gamma, num_minimizersToFind=num_minimizersToFind, num_iteration=num_iteration, saveLog=saveLog, runName=runName, textMemo=textMemo, algorithmVersion=algorithmVersion, initialIterateMatrix=initialIterateMatrix, targetMatrix=targetMatrix,  keepInitialDistribution=keepInitialDistribution,weightMatrix=weightMatrix, ParameterNames=ParameterNames,ReparameterizationDef=ReparameterizationDef, ParameterTransFormationDef=ParameterTransFormationDef,lowerBound=lowerBound, upperBound=upperBound)
+  runSetting=list(nonlinearFunction=nonlinearFunction, targetVector=targetVector, initial_lowerRange=initial_lowerRange, initial_upperRange=initial_upperRange, stayIn_initialRange=stayIn_initialRange,algorithmParameter_initialLambda=algorithmParameter_initialLambda, algorithmParameter_gamma=algorithmParameter_gamma, num_minimizersToFind=num_minimizersToFind, num_iteration=num_iteration, saveLog=saveLog, runName=runName, textMemo=textMemo, algorithmVersion=algorithmVersion, initialIterateMatrix=initialIterateMatrix, targetMatrix=targetMatrix,  keepInitialDistribution=keepInitialDistribution,weightMatrix=weightMatrix, ParameterNames=ParameterNames,ReparameterizationDef=ReparameterizationDef, ParameterTransFormationDef=ParameterTransFormationDef,lowerBound=lowerBound, upperBound=upperBound, varianceExponent=varianceExponent)
 
   testCGNMinput=TRUE
   nonlinearFunctionCanTakeMatrixInput=FALSE
@@ -897,6 +899,19 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
 
 
 
+  weightMatrix_forRes=weightMatrix
+
+  if(varianceExponent==1){
+      weightMatrix_forRes=capProportionalWeight(1/Y)
+    }else if(varianceExponent>0){
+      weightMatrix_forRes=capProportionalWeight(1/Y^varianceExponent)
+    }else if(!is.matrix(weightMatrix_forRes)){
+      weightMatrix_forRes=matrix(1, nrow = num_minimizersToFind, ncol = length(targetVector))
+    }else if(dim(weightMatrix_forRes)[1]!=num_minimizersToFind|dim(weightMatrix_forRes)[2]!=length(targetVector)){
+      message("Wrong size of weightMatrix is given so all weight will be set to one.")
+      weightMatrix_forRes=matrix(1, nrow = num_minimizersToFind, ncol = length(targetVector))
+    }
+
 
     # compute SSR
     residual <- matlabSum((weightMatrix_forRes*(Y-targetMatrix))^2,2)
@@ -949,7 +964,14 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
 
     if(algorithmVersion==3){
 
-      out_temp <- main_iteration_version3_fast(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse, stayIn_initialRange=stayIn_initialRange, keepInitialDistribution = keepInitialDistribution, weightMatrix=weightMatrix)
+      if (k<10){
+              out_temp <- main_iteration_version3_fast(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse, stayIn_initialRange=stayIn_initialRange, keepInitialDistribution = keepInitialDistribution, weightMatrix=weightMatrix, varianceExponent=0)
+
+      }else{
+        out_temp <- main_iteration_version3_fast(X, Y, lambda_vec, X_ul_in[1,], X_ul_in[2,], targetMatrix, gamma_toUse, stayIn_initialRange=stayIn_initialRange, keepInitialDistribution = keepInitialDistribution, weightMatrix=weightMatrix, varianceExponent=varianceExponent)
+      }
+
+
 
       # }else if(algorithmVersion==3.1){
       #
@@ -1023,6 +1045,7 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
       message(Y_new)
     }
 
+
     residual_new <- t(matlabSum((weightMatrix_forRes*(Y_new-targetMatrix))^2,2))
 
 
@@ -1039,6 +1062,14 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
         }
       }
     }
+
+    if(varianceExponent==1){
+      weightMatrix_forRes=capProportionalWeight(1/Y)
+    }else if(varianceExponent>0){
+      weightMatrix_forRes=capProportionalWeight(1/Y^varianceExponent)
+    }
+
+    residual <- matlabSum((weightMatrix_forRes*(Y-targetMatrix))^2,2)
 
 
     X_history[[k+1]] <- X
@@ -1073,6 +1104,11 @@ Cluster_Gauss_Newton_method_core <- function(nonlinearFunction, targetVector, in
     }
   }
   CGNM_result=list(X=X,Y=Y,residual_history=residual_history, lambda_history=lambda_history, runSetting=runSetting, initialX=X_history[[1]], initialY=Y_history[[1]] )
+
+  if(keepIterationHistory){
+    CGNM_result$X_history=X_history
+    CGNM_result$Y_history=Y_history
+  }
 
 
 
@@ -1439,7 +1475,18 @@ main_iteration_version1 <-  function(X_in, Y_in, lambdaV, minX, maxX, targetMatr
 }
 
 
-main_iteration_version3_fast <-  function(X_in_original, Y_in, lambdaV_original, minX_original, maxX_original, targetMatrix, algorithmParameter_gamma, stayIn_initialRange=FALSE, keepInitialDistribution=NA, weightMatrix=NA){
+# Caps the magnitude of a proportional weight (1/Y^varianceExponent) so that a
+# candidate whose current predicted value is at or near zero cannot blow up
+# the weighted normal-equations solve (squaring an uncapped weight there can
+# overflow to Inf, which then propagates as NaN).
+capProportionalWeight <- function(weight, cap=1e8){
+  weight[is.nan(weight)] <- 0
+  tooLarge <- is.infinite(weight) | abs(weight) > cap
+  weight[tooLarge] <- sign(weight[tooLarge]) * cap
+  weight
+}
+
+main_iteration_version3_fast <-  function(X_in_original, Y_in, lambdaV_original, minX_original, maxX_original, targetMatrix, algorithmParameter_gamma, stayIn_initialRange=FALSE, keepInitialDistribution=NA, weightMatrix=NA, varianceExponent=0){
 
 
   validXcol=!(col_max(X_in_original)==col_min(X_in_original))
@@ -1519,6 +1566,16 @@ main_iteration_version3_fast <-  function(X_in_original, Y_in, lambdaV_original,
   deltaX <- matrix(0, dim(X_in)[1],dim(X_in)[2])
   delta_X <- matrix(0, dim(X_in)[1],dim(X_in)[2])
   tempOnes <- matrix(1, dim(Y_in)[1],1)
+
+  # For proportional weighting, weight by the reciprocal of the best-fit
+  # candidate's own predicted values rather than each candidate's own (which
+  # can be an unstable, in-progress iterate that has strayed near/through
+  # zero) -- keeps the weight consistent and avoids blowing up.
+  if(varianceExponent>0){
+    candidateResidual <- rowSums((targetMatrix-Y_in)^2)
+    candidateResidual[!is.finite(candidateResidual)] <- Inf
+    bestFitY <- Y_in[which.min(candidateResidual), ]
+  }
 
   for (k in seq(1,dim(Y_in)[1])){
     if(lambdaV[k]<10^10&(!(kmean_result$cluster[k] %in% notAcceptableClusters))){
@@ -1619,7 +1676,11 @@ main_iteration_version3_fast <-  function(X_in_original, Y_in, lambdaV_original,
 
 
       ## 2-2): Solve for x that minimizes the resodual using the weighted linear approximation
-      if(!is.matrix(weightMatrix)){
+      if(varianceExponent==1){
+        delta_X[k,] <- CGNR_ATAx_ATb_with_reg_weight(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k],capProportionalWeight(1/Y_in[k,]))
+      }else if(varianceExponent>0){
+        delta_X[k,] <- CGNR_ATAx_ATb_with_reg_weight(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k],capProportionalWeight(1/Y_in[k,]^varianceExponent))
+      }else if(!is.matrix(weightMatrix)){
         delta_X[k,] <- CGNR_ATAx_ATb_with_reg(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k])
       }else if(dim(weightMatrix)[1]==dim(Y_in)[1]&dim(weightMatrix)[2]==dim(Y_in)[2]){
         delta_X[k,] <- CGNR_ATAx_ATb_with_reg_weight(A, t(targetMatrix[k,]-Y_in[k,]),lambdaV[k],weightMatrix[k,])
@@ -1704,8 +1765,10 @@ CGNR_ATAx_ATb_with_weight=function(A, b, weight){
 
 CGNR_ATAx_ATb_with_reg_weight=function(A, b, lambda, weight){
 
+  excludeRow <- (weight==0) | !is.finite(weight)
+
   for (i in seq(1,min(length(weight),dim(A)[1]))){
-    if (weight[i]==0){
+    if (excludeRow[i]){
       for (j in 1:dim(A)[2]){
         A[i,j] <- 0
       }
@@ -1715,7 +1778,7 @@ CGNR_ATAx_ATb_with_reg_weight=function(A, b, lambda, weight){
       b[i] <- weight[i]*b[i]
     }
   }
-  return(CGNR_ATAx_ATb_with_reg(A[weight!=0,],t(b[weight!=0]),lambda))
+  return(CGNR_ATAx_ATb_with_reg(A[!excludeRow,],t(b[!excludeRow]),lambda))
 }
 
 
@@ -1818,6 +1881,7 @@ CGNR_ATAx_ATb_with_regVec=function(A, b, lambda){#   //solves (A^TA+lambda_vec) 
 #' @param num_bootstrapSample (default: 200) \emph{A positive integer} number of bootstrap samples to generate.
 #' @param indicesToUseAsInitialIterates (default: NA) \emph{A vector of integers} indices to use for initial iterate of the bootstrap analyses.  For CGNM bootstrap, we use the parameters found by CGNM as the initial iterates, here you can manually spccify which of the approximate minimizers that was found by CGNM (where the CGNM computation result is given as CGNM_result file) to use as initial iterates.  (if NA, use indices chosen by the acceptedIndices() function with default setting).
 #' @param bootstrapType (default:1) \emph{1 or 2} 1: residual resampling bootstrap method, 2: case sampling bootstrap method
+#' @param outputS4 (default: FALSE) \emph{TRUE or FALSE} if set TRUE, the result is returned as a \code{\link{CGNM_result-class}} S4 object instead of the classic list (accessed identically via \code{$}/\code{[[ ]]}). If \code{CGNM_result} was already an S4 object (i.e. it came from a call with \code{outputS4 = TRUE}), the output is an S4 object regardless of this argument, since the bootstrap fields are simply added onto the object you passed in. Whenever the output ends up being an S4 object (either way), the bootstrap run's own per-iteration history is also retained, so profile-likelihood functions can use both the original fit and this bootstrap result together with no dependency on \code{saveLog}/disk.
 #' @param ... Further arguments to be supplied to nonlinearFunction
 #' @return list of a matrix X, Y,residual_history, initialX, bootstrapX, bootstrapY as well as a list runSetting.
 #' \enumerate{\item X, Y, residual_history, initialX: identical to what was given as CGNM_result.
@@ -1859,7 +1923,9 @@ CGNR_ATAx_ATb_with_regVec=function(A, b, lambda){#   //solves (A^TA+lambda_vec) 
 #' @export
 #' @import stats MASS
 
-Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction, num_bootstrapSample=200, indicesToUseAsInitialIterates=NA, bootstrapType=1, ...){
+Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction, num_bootstrapSample=200, indicesToUseAsInitialIterates=NA, bootstrapType=1, outputS4=FALSE, ...){
+
+  keepIterationHistory=outputS4||methods::is(CGNM_result, "CGNM_result")
 
   cutoff_pvalue=0.05
   numParametersIncluded=NA
@@ -2040,7 +2106,7 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
 
 
   if(bootstrapType==1){
-    CGNM_bootstrap_result=Cluster_Gauss_Newton_method_core(nonlinearFunction = nonlinearFunction_varTrans, targetVector = targetVector, initial_lowerRange = initial_lowerRange, initial_upperRange = initial_upperRange, stayIn_initialRange = stayIn_initRange, num_minimizersToFind = num_minimizersToFind, num_iteration = num_iteration, saveLog = saveLog, runName = runName, textMemo = textMemo,algorithmParameter_initialLambda = algorithmParameter_initialLambda, algorithmParameter_gamma = algorithmParameter_gamma, algorithmVersion = algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, targetMatrix = bootstrapTargetMatrix, ParameterNames=ParameterNames,ReparameterizationDef = ReparameterizationDef,ParameterTransFormationDef=ParameterTransFormationDef,keepInitialDistribution = FALSE, folderSuffix="bootstrap", ... )
+    CGNM_bootstrap_result=Cluster_Gauss_Newton_method_core(nonlinearFunction = nonlinearFunction_varTrans, targetVector = targetVector, initial_lowerRange = initial_lowerRange, initial_upperRange = initial_upperRange, stayIn_initialRange = stayIn_initRange, num_minimizersToFind = num_minimizersToFind, num_iteration = num_iteration, saveLog = saveLog, runName = runName, textMemo = textMemo,algorithmParameter_initialLambda = algorithmParameter_initialLambda, algorithmParameter_gamma = algorithmParameter_gamma, algorithmVersion = algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, targetMatrix = bootstrapTargetMatrix, ParameterNames=ParameterNames,ReparameterizationDef = ReparameterizationDef,ParameterTransFormationDef=ParameterTransFormationDef,keepInitialDistribution = FALSE, folderSuffix="bootstrap", keepIterationHistory=keepIterationHistory, ... )
     CGNM_result$runSetting$targetMatrix=bootstrapTargetMatrix
 
   }else if(bootstrapType==2){
@@ -2052,17 +2118,22 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
       bootstrapWeightMatrix[i,as.numeric(names(randSample))]=as.numeric(randSample)
     }
 
-    CGNM_bootstrap_result=Cluster_Gauss_Newton_method_core(nonlinearFunction = nonlinearFunction_varTrans, targetVector = targetVector, initial_lowerRange = initial_lowerRange, initial_upperRange = initial_upperRange, stayIn_initialRange = stayIn_initRange, num_minimizersToFind = num_minimizersToFind, num_iteration = num_iteration, saveLog = saveLog, runName = runName, textMemo = textMemo,algorithmParameter_initialLambda = algorithmParameter_initialLambda, algorithmParameter_gamma = algorithmParameter_gamma, algorithmVersion = algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, weightMatrix = bootstrapWeightMatrix, ParameterNames=ParameterNames,ReparameterizationDef = ReparameterizationDef,ParameterTransFormationDef=ParameterTransFormationDef,keepInitialDistribution = FALSE, folderSuffix="bootstrap", ... )
+    CGNM_bootstrap_result=Cluster_Gauss_Newton_method_core(nonlinearFunction = nonlinearFunction_varTrans, targetVector = targetVector, initial_lowerRange = initial_lowerRange, initial_upperRange = initial_upperRange, stayIn_initialRange = stayIn_initRange, num_minimizersToFind = num_minimizersToFind, num_iteration = num_iteration, saveLog = saveLog, runName = runName, textMemo = textMemo,algorithmParameter_initialLambda = algorithmParameter_initialLambda, algorithmParameter_gamma = algorithmParameter_gamma, algorithmVersion = algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, weightMatrix = bootstrapWeightMatrix, ParameterNames=ParameterNames,ReparameterizationDef = ReparameterizationDef,ParameterTransFormationDef=ParameterTransFormationDef,keepInitialDistribution = FALSE, folderSuffix="bootstrap", keepIterationHistory=keepIterationHistory, ... )
     CGNM_result$runSetting$targetMatrix=NA
   }else if(bootstrapType==3){
     bootstrapWeightMatrix=matrix(runif(num_bootstrapSample*length(targetVector)),nrow = num_bootstrapSample,ncol = length(targetVector))
 
-    CGNM_bootstrap_result=Cluster_Gauss_Newton_method_core(nonlinearFunction = nonlinearFunction_varTrans, targetVector = targetVector, initial_lowerRange = initial_lowerRange, initial_upperRange = initial_upperRange, stayIn_initialRange = stayIn_initRange, num_minimizersToFind = num_minimizersToFind, num_iteration = num_iteration, saveLog = saveLog, runName = runName, textMemo = textMemo,algorithmParameter_initialLambda = algorithmParameter_initialLambda, algorithmParameter_gamma = algorithmParameter_gamma, algorithmVersion = algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, weightMatrix = bootstrapWeightMatrix, ParameterNames=ParameterNames,ReparameterizationDef = ReparameterizationDef,ParameterTransFormationDef=ParameterTransFormationDef,keepInitialDistribution = FALSE, folderSuffix="bootstrap", ... )
+    CGNM_bootstrap_result=Cluster_Gauss_Newton_method_core(nonlinearFunction = nonlinearFunction_varTrans, targetVector = targetVector, initial_lowerRange = initial_lowerRange, initial_upperRange = initial_upperRange, stayIn_initialRange = stayIn_initRange, num_minimizersToFind = num_minimizersToFind, num_iteration = num_iteration, saveLog = saveLog, runName = runName, textMemo = textMemo,algorithmParameter_initialLambda = algorithmParameter_initialLambda, algorithmParameter_gamma = algorithmParameter_gamma, algorithmVersion = algorithmVersion, initialIterateMatrix=bootstrapInitialMatrix, weightMatrix = bootstrapWeightMatrix, ParameterNames=ParameterNames,ReparameterizationDef = ReparameterizationDef,ParameterTransFormationDef=ParameterTransFormationDef,keepInitialDistribution = FALSE, folderSuffix="bootstrap", keepIterationHistory=keepIterationHistory, ... )
     CGNM_result$runSetting$targetMatrix=NA
   }
 
   CGNM_result$bootstrapX=CGNM_bootstrap_result$X
   CGNM_result$bootstrapY=CGNM_bootstrap_result$Y
+
+  if(keepIterationHistory){
+    CGNM_result$bootstrapIterationHistory=CGNM_bootstrap_result
+  }
+
   CGNM_result$runSetting$num_bootstrapSample=num_bootstrapSample
   CGNM_result$runSetting$indicesToUseAsInitialIterates=indicesToUseAsInitialIterates
   CGNM_result$runSetting$keepInitialDistribution=CGNM_bootstrap_result$keepInitialDistribution
@@ -2097,6 +2168,10 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
     }
   }
 
+  if(outputS4){
+    CGNM_result <- as_CGNM_result_S4(CGNM_result)
+  }
+
   return(CGNM_result)
 }
 
@@ -2112,6 +2187,7 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
 #' @param numRepeat  (default: 1) \emph{A vector of integers} number of EBE per individual to obtain.
 #' @param keepInitialDistribution (default: NA) \emph{A vector of TRUE or FALSE} of length n User can specify if the initial distribution of one of the input variable (e.g. parameter) to be kept as the initial iterate throughout CGNM iterations.
 #' @param algorithmParameter_EBEweight (default: 9) \emph{A number}
+#' @param outputS4 (default: FALSE) \emph{TRUE or FALSE} if set TRUE, the result is returned as a \code{\link{CGNM_result-class}} S4 object instead of the classic list (accessed identically via \code{$}/\code{[[ ]]}). If \code{CGNM_result} was already an S4 object (i.e. it came from a call with \code{outputS4 = TRUE}), the output is an S4 object regardless of this argument.
 #' @param ... Further arguments to be supplied to nonlinearFunction
 #' @return list of a matrix X, Y,residual_history, initialX, bootstrapX, bootstrapY as well as a list runSetting.
 #' \enumerate{\item X, Y, residual_history, initialX: identical to what was given as CGNM_result.
@@ -2152,7 +2228,9 @@ Cluster_Gauss_Newton_Bootstrap_method <- function(CGNM_result, nonlinearFunction
 #' @export
 #' @import stats MASS
 
-Cluster_Gauss_Newton_EBE_method <- function(CGNM_result, nonlinearFunction, individualIndices_vec, numRepeat=1, keepInitialDistribution=NA, algorithmParameter_EBEweight=1, ...){
+Cluster_Gauss_Newton_EBE_method <- function(CGNM_result, nonlinearFunction, individualIndices_vec, numRepeat=1, keepInitialDistribution=NA, algorithmParameter_EBEweight=1, outputS4=FALSE, ...){
+
+  inputWasS4=methods::is(CGNM_result, "CGNM_result")
 
   ## check if targetVector and individualIndices_vec has the same length
   if(length(CGNM_result$runSetting$targetVector)!=length(individualIndices_vec)){
@@ -2424,6 +2502,10 @@ Cluster_Gauss_Newton_EBE_method <- function(CGNM_result, nonlinearFunction, indi
     }else{
       save(file =paste0(runName,"_CGNM_log_EBE/CGNM_EBE_Result.RDATA"),CGNM_result)
     }
+  }
+
+  if(outputS4 || inputWasS4){
+    CGNM_result <- as_CGNM_result_S4(CGNM_result)
   }
 
   return(CGNM_result)

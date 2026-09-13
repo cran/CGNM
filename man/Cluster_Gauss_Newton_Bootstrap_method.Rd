@@ -10,6 +10,7 @@ Cluster_Gauss_Newton_Bootstrap_method(
   num_bootstrapSample = 200,
   indicesToUseAsInitialIterates = NA,
   bootstrapType = 1,
+  outputS4 = FALSE,
   ...
 )
 }
@@ -23,6 +24,8 @@ Cluster_Gauss_Newton_Bootstrap_method(
 \item{indicesToUseAsInitialIterates}{(default: NA) \emph{A vector of integers} indices to use for initial iterate of the bootstrap analyses.  For CGNM bootstrap, we use the parameters found by CGNM as the initial iterates, here you can manually spccify which of the approximate minimizers that was found by CGNM (where the CGNM computation result is given as CGNM_result file) to use as initial iterates.  (if NA, use indices chosen by the acceptedIndices() function with default setting).}
 
 \item{bootstrapType}{(default:1) \emph{1 or 2} 1: residual resampling bootstrap method, 2: case sampling bootstrap method}
+
+\item{outputS4}{(default: FALSE) \emph{TRUE or FALSE} if set TRUE, the result is returned as a \code{\link{CGNM_result-class}} S4 object instead of the classic list (accessed identically via \code{$}/\code{[[ ]]}). If \code{CGNM_result} was already an S4 object (i.e. it came from a call with \code{outputS4 = TRUE}), the output is an S4 object regardless of this argument, since the bootstrap fields are simply added onto the object you passed in. Whenever the output ends up being an S4 object (either way), the bootstrap run's own per-iteration history is also retained, so profile-likelihood functions can use both the original fit and this bootstrap result together with no dependency on \code{saveLog}/disk.}
 
 \item{...}{Further arguments to be supplied to nonlinearFunction}
 }

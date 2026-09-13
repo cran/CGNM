@@ -714,7 +714,7 @@ plot_paraDistribution_byHistogram=function(CGNM_result, indicesToInclude=NA, Par
 
 #' @title plot_profileLikelihood
 #' @description
-#' Draw profile likelihood surface using the function evaluations conducted during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().  The grey horizontal line is the threshold for 95% pointwise confidence interval.
+#' Draw profile likelihood surface using the function evaluations conducted during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().  The grey horizontal line is the threshold for 95\% pointwise confidence interval.
 #' @param logLocation (required input) \emph{A string} of folder directory where CGNM computation log files exist.
 #' @param alpha (default: 0.25) \emph{a number between 0 and 1} level of significance (used to draw horizontal line on the profile likelihood).
 #' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
@@ -761,7 +761,7 @@ plot_profileLikelihood=function(logLocation, alpha=0.25, numBins=NA,  ParameterN
 
 #' @title compare_profileLikelihood
 #' @description
-#' Draw profile likelihood surface using the function evaluations conducted during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().  The grey horizontal line is the threshold for 95% pointwise confidence interval.
+#' Draw profile likelihood surface using the function evaluations conducted during CGNM computation. Note plot_SSRsurface can only be used when log is saved by setting saveLog=TRUE option when running Cluster_Gauss_Newton_method().  The grey horizontal line is the threshold for 95\% pointwise confidence interval.
 #' @param logLocation (required input) \emph{List of strings} of folder directory where CGNM computation log files exist. (also can be list of CGNM_result objects)
 #' @param alpha (default: 0.25) \emph{a number between 0 and 1} level of significance (used to draw horizontal line on the profile likelihood).
 #' @param numBins (default: NA) \emph{A positive integer} SSR surface is plotted by finding the minimum SSR given one of the parameters is fixed and then repeat this for various values.  numBins specifies the number of different parameter values to fix for each parameter. (if set NA the number of bins are set as num_minimizersToFind/10)
@@ -901,7 +901,7 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
     prettyString=""
 
     if(length(minIndex)>1){
-      min_vec=c(min_vec, median(dataframe_nu$value[minIndex] ))
+      min_vec=c(min_vec, dataframe_nu$value[minIndex[1]] )
 #      identifiability="Not identifiable"
     }else{
       min_vec=c(min_vec, dataframe_nu$value[minIndex] )
@@ -950,7 +950,7 @@ table_profileLikelihoodConfidenceInterval=function(logLocation, alpha=0.25, numB
 
 
 
-  out_df[out_df$parameter_identifiability=="Not identifiable","best"]=NA
+#  out_df[out_df$parameter_identifiability=="Not identifiable","best"]=NA
 
 
   pretty_df=data.frame(parameterName=paraKind,value=paste(signif(as.numeric(out_df$best), digits = 3), prettyString_vec))#, parameter_identifiability=identifiability_vec)
@@ -1084,8 +1084,8 @@ plot_SSRsurface=function(logLocation, alpha=0.25,profile_likelihood=FALSE, numBi
     }
 
     g=g+ggplot2:: geom_rect(data=data.frame(minBoundValue=Xinit_min, maxBoundValue=Xinit_max,parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xmin=minBoundValue, xmax=maxBoundValue, ymin=-Inf, ymax=Inf), alpha=0.3, fill="grey", inherit.aes = FALSE)
-    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_min, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray", inherit.aes = FALSE)
-    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_max, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray", inherit.aes = FALSE)
+    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_min, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray")
+    g=g+ggplot2::geom_vline(data=data.frame(boundValue=Xinit_max, parameterName=factor(ParameterNames, levels=ParameterNames)), ggplot2::aes(xintercept=boundValue), colour="gray")
   }
 
   if(profile_likelihood){
@@ -1136,124 +1136,203 @@ prepSSRsurfaceData=function(logLocation, ParameterNames=NA, ReparameterizationDe
   }
 
 
-  if(typeof(logLocation)=="character"){
-    DirectoryName_vec=c(logLocation)
+  useInMemoryHistory=(is.list(logLocation)||methods::is(logLocation, "CGNM_result"))&&!is.null(logLocation$X_history)
 
-  }else if(typeof(logLocation)=="list"){
-    if(logLocation$runSetting$runName==""){
-      DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
+  if(useInMemoryHistory){
+
+    CGNM_result=logLocation
+
+    if(is.null(CGNM_result$runSetting$ReparameterizationDef)){
+      ReparameterizationDef=paste0("x", seq(1,length(CGNM_result$runSetting$initial_lowerRange)))
     }else{
-      DirectoryName_vec=c(paste0(logLocation$runSetting$runName, "_CGNM_log"),paste0(logLocation$runSetting$runName, "_CGNM_log_bootstrap"))
+      ReparameterizationDef=CGNM_result$runSetting$ReparameterizationDef
     }
 
+    if(length(CGNM_result$runSetting$ParameterNames)!=length(ReparameterizationDef)){
+      ParameterNames=ReparameterizationDef
+    }else{
+      ParameterNames=CGNM_result$runSetting$ParameterNames
+    }
 
+    initialX=CGNM_result$initialX
 
-  }else{
-    warning("DirectoryName need to be either the CGNM_result object or a string")
-  }
+    numPara=dim(initialX)[2]
 
-  load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
+    if(is.na(ParameterNames[1])){
+      ParameterNames=paste0("x",seq(1,dim(CGNM_result$initialX)[2]))
+      ReparameterizationDef=ParameterNames
+    }
 
+    rawX_nu=CGNM_result$initialX
+    R_nu=Residual_function(CGNM_result, initial=TRUE)
 
-  if(is.null(CGNM_result$runSetting$ReparameterizationDef)){
-    ReparameterizationDef=paste0("x", seq(1,length(CGNM_result$runSetting$initial_lowerRange)))
-  }else{
-    ReparameterizationDef=CGNM_result$runSetting$ReparameterizationDef
-  }
+    initiLNLfunc=CGNM_result$runSetting$nonlinearFunction
+    rawXinit=CGNM_result$initialX
+    runName= CGNM_result$runSetting$runName
 
-  if(length(CGNM_result$runSetting$ParameterNames)!=length(ReparameterizationDef)){
-    ParameterNames=ReparameterizationDef
-  }else{
-    ParameterNames=CGNM_result$runSetting$ParameterNames
-  }
-  #
-  #   if(is.na(ParameterNames)[1]&!is.null(CGNM_result$runSetting$ParameterNames)){
-  #     ParameterNames=CGNM_result$runSetting$ParameterNames
-  #   }
-  #
-  #
-  #   if(is.na(ReparameterizationDef)[1]&!is.null(CGNM_result$runSetting$ReparameterizationDef)){
-  #     ReparameterizationDef=CGNM_result$runSetting$ReparameterizationDef
-  #   }
-  #
-  #
-  #
-  # if(is.na(ParameterNames[1])|length(ParameterNames)!=length(ReparameterizationDef)){
-  #   ParameterNames=ReparameterizationDef
-  # }
+    # Mirrors the disk-based loop below (main run's folder, then the bootstrap
+    # run's folder, if any): here the "folders" are in-memory history bundles
+    # captured when the fit(s) were run with outputS4=TRUE, so no disk access
+    # is needed. Each bundle's own initial iterate (index 1) is not re-added;
+    # rawX_nu/R_nu were already seeded from the main run's initial iterate above.
+    historyBundles=list(list(X_history=CGNM_result$X_history, Y_history=CGNM_result$Y_history,
+                              initialX=CGNM_result$initialX, initialY=CGNM_result$initialY,
+                              residual_history=CGNM_result$residual_history, lambda_history=CGNM_result$lambda_history,
+                              runSetting=CGNM_result$runSetting, source="the main fit"))
 
-  initialX=CGNM_result$initialX
+    if(!is.null(CGNM_result$bootstrapIterationHistory)){
+      bh=CGNM_result$bootstrapIterationHistory
+      historyBundles[[2]]=list(X_history=bh$X_history, Y_history=bh$Y_history,
+                                initialX=bh$initialX, initialY=bh$initialY,
+                                residual_history=bh$residual_history, lambda_history=bh$lambda_history,
+                                runSetting=bh$runSetting, source="the bootstrap run")
+    }
 
-  numPara=dim(initialX)[2]
+    for(historyBundle in historyBundles){
 
-  if(is.na(ParameterNames[1])){
-    ParameterNames=paste0("x",seq(1,dim(CGNM_result$initialX)[2]))
-    ReparameterizationDef=ParameterNames
-  }
+      n_iter=length(historyBundle$X_history)-1
 
+      if(!silent){
+        print(paste0("in-memory iteration history from ",historyBundle$source," is used to draw SSR/likelihood surface"))
+      }
 
+      if(n_iter>=1){
+        for(i in seq(1,n_iter)){
+          iterationResult=list(X=historyBundle$X_history[[i+1]], Y=historyBundle$Y_history[[i+1]],
+                                initialX=historyBundle$initialX, initialY=historyBundle$initialY,
+                                residual_history=historyBundle$residual_history[,seq(1,min(i+1,dim(historyBundle$residual_history)[2])),drop=FALSE],
+                                lambda_history=historyBundle$lambda_history,
+                                runSetting=historyBundle$runSetting)
 
-
-  rawX_nu=CGNM_result$initialX
-  #Residual_matrix=Residual_matrix_function(CGNM_result, initial=TRUE)
-  R_nu=Residual_function(CGNM_result, initial=TRUE)#matlabSum((Residual_matrix)^2,2)
-
-  #R_nu=CGNM_result$residual_history[,1]
-
-  # if(is.null(CGNM_result$initialY))
-  # {
-  #   ResVar_nu=R_nu*NA
-  # }else{
-  #   Residual_matrix=Residual_matrix_function(CGNM_result)
-  #   tempVariance=c()
-  #   for(j in seq(1,dim(Residual_matrix)[1])){
-  #     tempVariance=c(tempVariance, var(Residual_matrix[j,])*(numPara-1)/numPara)
-  #   }
-  #   ResVar_nu=tempVariance
-  # }
-
-  initiLNLfunc=CGNM_result$runSetting$nonlinearFunction
-  rawXinit=CGNM_result$initialX
-  runName= CGNM_result$runSetting$runName
-
-  residual_variance_vec=c()
-
-  for(DirectoryName in DirectoryName_vec){
-
-    checkNL=TRUE
-    for(i in seq(1,CGNM_result$runSetting$num_iteration)){
-      fileName=paste0(DirectoryName,"/iteration_",i,".RDATA")
-      if (file.exists(fileName)){
-        load(fileName)
-        rawX_nu=rbind(rawX_nu,CGNM_result$X)
-
-        #Residual_matrix=Residual_matrix_function(CGNM_result)#$Y[,!is.na(CGNM_result$runSetting$targetVector)]-repmat(matrix(CGNM_result$runSetting$targetVector[!is.na(CGNM_result$runSetting$targetVector)],nrow=1), dim(CGNM_result$Y)[1],1)
-        # tempVariance=c()
-        # for(j in seq(1,dim(Residual_matrix)[1])){
-        #   tempVariance=c(tempVariance,var(Residual_matrix[j,])*(numPara-1)/numPara)
-        # }
-        #
-        # ResVar_nu=c(ResVar_nu,tempVariance)
-        tempR=Residual_function(CGNM_result, initial=FALSE)#matlabSum((Residual_matrix)^2,2)
-        R_nu=c(R_nu, tempR)
-
-        if(checkNL){
-          if(!silent){
-            print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
-          }
-          # if(!identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
-          #   warning(paste0("the nonlinear function used in this log in ",getwd(),"/",DirectoryName," is not the same as ",getwd(),"/",DirectoryName_vec[1]))
-          # }
-          checkNL=FALSE
+          rawX_nu=rbind(rawX_nu,iterationResult$X)
+          tempR=Residual_function(iterationResult, initial=FALSE)
+          R_nu=c(R_nu, tempR)
         }
-
       }
     }
 
-    #  residual_variance_vec=c(residual_variance_vec, min(R_nu,na.rm = TRUE)/(sum(!is.na(CGNM_result$runSetting$targetVector))-1))
+  }else{
+
+    if(typeof(logLocation)=="character"){
+      DirectoryName_vec=c(logLocation)
+
+    }else if(is.list(logLocation)||methods::is(logLocation, "CGNM_result")){
+      if(logLocation$runSetting$runName==""){
+        DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
+      }else{
+        DirectoryName_vec=c(paste0(logLocation$runSetting$runName, "_CGNM_log"),paste0(logLocation$runSetting$runName, "_CGNM_log_bootstrap"))
+      }
+
+
+
+    }else{
+      warning("DirectoryName need to be either the CGNM_result object or a string")
+    }
+
+    load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
+
+
+    if(is.null(CGNM_result$runSetting$ReparameterizationDef)){
+      ReparameterizationDef=paste0("x", seq(1,length(CGNM_result$runSetting$initial_lowerRange)))
+    }else{
+      ReparameterizationDef=CGNM_result$runSetting$ReparameterizationDef
+    }
+
+    if(length(CGNM_result$runSetting$ParameterNames)!=length(ReparameterizationDef)){
+      ParameterNames=ReparameterizationDef
+    }else{
+      ParameterNames=CGNM_result$runSetting$ParameterNames
+    }
+    #
+    #   if(is.na(ParameterNames)[1]&!is.null(CGNM_result$runSetting$ParameterNames)){
+    #     ParameterNames=CGNM_result$runSetting$ParameterNames
+    #   }
+    #
+    #
+    #   if(is.na(ReparameterizationDef)[1]&!is.null(CGNM_result$runSetting$ReparameterizationDef)){
+    #     ReparameterizationDef=CGNM_result$runSetting$ReparameterizationDef
+    #   }
+    #
+    #
+    #
+    # if(is.na(ParameterNames[1])|length(ParameterNames)!=length(ReparameterizationDef)){
+    #   ParameterNames=ReparameterizationDef
+    # }
+
+    initialX=CGNM_result$initialX
+
+    numPara=dim(initialX)[2]
+
+    if(is.na(ParameterNames[1])){
+      ParameterNames=paste0("x",seq(1,dim(CGNM_result$initialX)[2]))
+      ReparameterizationDef=ParameterNames
+    }
+
+
+
+
+    rawX_nu=CGNM_result$initialX
+    #Residual_matrix=Residual_matrix_function(CGNM_result, initial=TRUE)
+    R_nu=Residual_function(CGNM_result, initial=TRUE)#matlabSum((Residual_matrix)^2,2)
+
+    #R_nu=CGNM_result$residual_history[,1]
+
+    # if(is.null(CGNM_result$initialY))
+    # {
+    #   ResVar_nu=R_nu*NA
+    # }else{
+    #   Residual_matrix=Residual_matrix_function(CGNM_result)
+    #   tempVariance=c()
+    #   for(j in seq(1,dim(Residual_matrix)[1])){
+    #     tempVariance=c(tempVariance, var(Residual_matrix[j,])*(numPara-1)/numPara)
+    #   }
+    #   ResVar_nu=tempVariance
+    # }
+
+    initiLNLfunc=CGNM_result$runSetting$nonlinearFunction
+    rawXinit=CGNM_result$initialX
+    runName= CGNM_result$runSetting$runName
+
+    residual_variance_vec=c()
+
+    for(DirectoryName in DirectoryName_vec){
+
+      checkNL=TRUE
+      for(i in seq(1,CGNM_result$runSetting$num_iteration)){
+        fileName=paste0(DirectoryName,"/iteration_",i,".RDATA")
+        if (file.exists(fileName)){
+          load(fileName)
+          rawX_nu=rbind(rawX_nu,CGNM_result$X)
+
+          #Residual_matrix=Residual_matrix_function(CGNM_result)#$Y[,!is.na(CGNM_result$runSetting$targetVector)]-repmat(matrix(CGNM_result$runSetting$targetVector[!is.na(CGNM_result$runSetting$targetVector)],nrow=1), dim(CGNM_result$Y)[1],1)
+          # tempVariance=c()
+          # for(j in seq(1,dim(Residual_matrix)[1])){
+          #   tempVariance=c(tempVariance,var(Residual_matrix[j,])*(numPara-1)/numPara)
+          # }
+          #
+          # ResVar_nu=c(ResVar_nu,tempVariance)
+          tempR=Residual_function(CGNM_result, initial=FALSE)#matlabSum((Residual_matrix)^2,2)
+          R_nu=c(R_nu, tempR)
+
+          if(checkNL){
+            if(!silent){
+              print(paste0("log saved in ",getwd(),"/",DirectoryName," is used to draw SSR/likelihood surface"))
+            }
+            # if(!identical(initiLNLfunc, CGNM_result$runSetting$nonlinearFunction)){
+            #   warning(paste0("the nonlinear function used in this log in ",getwd(),"/",DirectoryName," is not the same as ",getwd(),"/",DirectoryName_vec[1]))
+            # }
+            checkNL=FALSE
+          }
+
+        }
+      }
+
+      #  residual_variance_vec=c(residual_variance_vec, min(R_nu,na.rm = TRUE)/(sum(!is.na(CGNM_result$runSetting$targetVector))-1))
+
+    }
+    #  residual_variance=min(residual_variance_vec, na.rm = TRUE)
 
   }
-  #  residual_variance=min(residual_variance_vec, na.rm = TRUE)
 
   reparaXinit=data.frame(row.names = seq(1,dim(rawXinit)[1]))
   temp_reparaXinit=data.frame(row.names = seq(1,dim(rawXinit)[1]))
@@ -2216,6 +2295,7 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
 #' @param indicesToInclude (default: NA) \emph{A vector of integers} indices to include in the plot (if NA, use indices chosen by the acceptedIndices() function with default setting).
 #' @param ParameterNames (default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)
 #' @param ReparameterizationDef (default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax.
+#' @param pretty (default: FALSE) \emph{TRUE or FALSE} if TRUE, instead of the full quantile table, return a one-column publication-ready table with the best fit parameter value (from \code{\link{bestApproximateMinimizers}}) and, when a bootstrap analysis result is available, its RSE (\%) in parentheses, e.g. \code{"12.3 (5.2\%)"}. If no bootstrap result is available RSE cannot be computed, so only the best fit value is shown.
 #' @return \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
 #' @examples
 #'
@@ -2249,11 +2329,12 @@ plot_goodnessOfFit=function(CGNM_result, plotType=1, plotRank=c(1), independentV
 #' table_parameterSummary(CGNM_result)
 #' table_parameterSummary(CGNM_result,
 #'      ReparameterizationDef=c("log10(Ka)","log10(V1)","log10(CL)"))
+#' table_parameterSummary(CGNM_result, pretty=TRUE)
 #'
 #' @export
 #' @import ggplot2
 
-table_parameterSummary=function(CGNM_result, indicesToInclude=NA, ParameterNames=NA, ReparameterizationDef=NA){
+table_parameterSummary=function(CGNM_result, indicesToInclude=NA, ParameterNames=NA, ReparameterizationDef=NA, pretty=FALSE){
 
   #   if(is.na(ParameterNames)[1]&!is.null(CGNM_result$runSetting$ParameterNames)){
   #
@@ -2308,6 +2389,29 @@ table_parameterSummary=function(CGNM_result, indicesToInclude=NA, ParameterNames
 
   rownames(summaryData_df)=variableNames
 
+  if(pretty){
+
+    bestFit_df=bestApproximateMinimizers(CGNM_result, numParameterSet=1, ParameterNames=ParameterNames, ReparameterizationDef=ReparameterizationDef)
+
+    hasRSE="RSE (%)" %in% colnames(summaryData_df)
+
+    prettyValue_vec=c()
+    for(vName in variableNames){
+      bestFitValue=signif(bestFit_df[[vName]], digits=3)
+
+      if(hasRSE){
+        rseValue=signif(summaryData_df[vName,"RSE (%)"], digits=3)
+        prettyValue_vec=c(prettyValue_vec, paste0(bestFitValue," (",rseValue,"%)"))
+      }else{
+        prettyValue_vec=c(prettyValue_vec, paste0(bestFitValue))
+      }
+    }
+
+    pretty_df=data.frame(row.names=variableNames)
+    pretty_df[,ifelse(hasRSE,"Estimate (RSE%)","Estimate")]=prettyValue_vec
+
+    return(pretty_df)
+  }
 
   return(summaryData_df)
 }
@@ -2371,20 +2475,18 @@ suggestInitialLowerRange=function(logLocation, alpha=0.25, numBins=NA){
 
   if(typeof(logLocation)=="character"){
 
-    DirectoryName_vec=c(logLocation)
+    load(paste0(logLocation[1],"/iteration_1.RDATA"))
 
-  }else if(typeof(logLocation)=="list"){
-    if(logLocation$runSetting$runName==""){
-      DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
-    }else{
-      DirectoryName_vec=c(paste0(logLocation$runSetting$runName,"_CGNM_log"),paste0(logLocation$runSetting$runName,"_CGNM_log_bootstrap"))
-    }
+  }else if(is.list(logLocation)||methods::is(logLocation, "CGNM_result")){
+    # the object already carries its own runSetting (lowerBound/upperBound/
+    # ParameterNames below), whether or not it also retains the in-memory
+    # iteration history that makeSSRsurfaceDataset()/prepSSRsurfaceData()
+    # look for separately -- no disk access is needed here either way.
+    CGNM_result=logLocation
 
   }else{
     warning("DirectoryName need to be either the CGNM_result object or a string")
   }
-
-  load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
 
 
   data=makeSSRsurfaceDataset(logLocation, TRUE, numBins, NA, ParameterNames, ReparameterizationDef, FALSE,Residual_function=Residual_function)
@@ -2518,20 +2620,18 @@ suggestInitialUpperRange=function(logLocation, alpha=0.25, numBins=NA){
 
   if(typeof(logLocation)=="character"){
 
-    DirectoryName_vec=c(logLocation)
+    load(paste0(logLocation[1],"/iteration_1.RDATA"))
 
-  }else if(typeof(logLocation)=="list"){
-    if(logLocation$runSetting$runName==""){
-      DirectoryName_vec=c("CGNM_log","CGNM_log_bootstrap")
-    }else{
-      DirectoryName_vec=c(paste0(logLocation$runSetting$runName,"_CGNM_log"),paste0(logLocation$runSetting$runName,"_CGNM_log_bootstrap"))
-    }
+  }else if(is.list(logLocation)||methods::is(logLocation, "CGNM_result")){
+    # the object already carries its own runSetting (lowerBound/upperBound/
+    # ParameterNames below), whether or not it also retains the in-memory
+    # iteration history that makeSSRsurfaceDataset()/prepSSRsurfaceData()
+    # look for separately -- no disk access is needed here either way.
+    CGNM_result=logLocation
 
   }else{
     warning("DirectoryName need to be either the CGNM_result object or a string")
   }
-
-  load(paste0(DirectoryName_vec[1],"/iteration_1.RDATA"))
 
 
   data=makeSSRsurfaceDataset(logLocation, TRUE, numBins, NA, ParameterNames, ReparameterizationDef, FALSE, Residual_function=Residual_function)

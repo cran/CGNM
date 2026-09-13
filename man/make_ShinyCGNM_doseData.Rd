@@ -4,7 +4,16 @@
 \alias{make_ShinyCGNM_doseData}
 \title{make_ShinyCGNM_doseData}
 \usage{
-make_ShinyCGNM_doseData(ID, dose, dosing.to, start.time, rate, fileName = NA)
+make_ShinyCGNM_doseData(
+  ID,
+  dose,
+  dosing.to,
+  start.time,
+  rate = NA,
+  nbr.doses = 1,
+  dosing.interval = NA,
+  fileName = NA
+)
 }
 \arguments{
 \item{ID}{(required input) \emph{string or vector}}
@@ -15,7 +24,11 @@ make_ShinyCGNM_doseData(ID, dose, dosing.to, start.time, rate, fileName = NA)
 
 \item{start.time}{(required input) \emph{number or numeric vector}}
 
-\item{rate}{(required input) \emph{NA, number or numeric vector} set ti BA uf bolus}
+\item{rate}{(default: NA) \emph{NA, number or numeric vector} infusion rate; set to NA for a bolus dose.}
+
+\item{nbr.doses}{(default: 1) \emph{number or numeric vector} number of doses to administer starting at start.time, spaced dosing.interval apart.}
+
+\item{dosing.interval}{(default: NA) \emph{NA, number or numeric vector} time between repeated doses; only relevant when nbr.doses is greater than 1.}
 
 \item{fileName}{(default: NA) \emph{NA or string}}
 }

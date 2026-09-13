@@ -27,6 +27,8 @@ Cluster_Gauss_Newton_method(
   keepInitialDistribution = NA,
   MO_weights = NA,
   MO_values = NA,
+  outputS4 = FALSE,
+  varianceExponent = 0,
   ...
 )
 }
@@ -75,13 +77,17 @@ Cluster_Gauss_Newton_method(
 
 \item{MO_values}{(default: NA) \emph{A numeric vector} where the values for the middle out methods are specified.  The length of the vector should be the same as the number of parameters. MO can be used to incoperate prior knowledge of the parameter to be estimated. (MO method is still under methodological development.)}
 
+\item{outputS4}{(default: FALSE) \emph{TRUE or FALSE} if set TRUE, the result is returned as a \code{\link{CGNM_result-class}} S4 object instead of the classic list. Every field of the classic list is still accessible via \code{$} or \code{[[ ]]} on the S4 object (e.g. \code{result$X}), so existing postprocessing/plotting functions accept either form unchanged. Setting this TRUE also retains the full per-iteration parameter/output history (normally discarded once the final result is assembled), so \code{\link{plot_profileLikelihood}}, \code{\link{plot_SSRsurface}}, \code{\link{table_profileLikelihoodConfidenceInterval}}, \code{\link{suggestInitialLowerRange}}, and \code{\link{suggestInitialUpperRange}} can be used directly on the returned object with no dependency on \code{saveLog}/disk/working directory; this adds memory roughly proportional to \code{num_iteration * num_minimizersToFind * (n + m)}. Default is FALSE so existing code that expects a list, and the default memory footprint, are unaffected.}
+
+\item{varianceExponent}{(default: 0) \emph{A non-negative number} [[experimental]] sets a proportional (heteroscedastic) residual weight of \code{1/nonlinearFunction(x)^varianceExponent} (capped to avoid extreme weights), which is applied on top of \code{weightMatrix} if that is also given. The default of 0 leaves the residual weighting unchanged (equivalent to not using this option). Useful when the variance of the observation is expected to scale with its magnitude, as is common for e.g. concentration data spanning multiple orders of magnitude.}
+
 \item{...}{Further arguments to be supplied to nonlinearFunction}
 }
 \value{
 list of a matrix X, Y,residual_history and initialX, as well as a list runSetting
 \enumerate{\item X: \emph{a num_minimizersToFind by n matrix} which stores the approximate minimizers of the nonlinear least squares in each row. In the context of model fitting they are \strong{the estimated parameter sets}.
 \item Y: \emph{a num_minimizersToFind by m matrix} which stores the nonlinearFunction evaluated at the corresponding approximate minimizers in matrix X above. In the context of model fitting each row corresponds to \strong{the model simulations}.
-\item residual_history: \emph{a num_iteration by num_minimizersToFind matrix} storing sum of squares residual for all iterations.
+\item residual_history: \emph{a num_minimizersToFind by (num_iteration+1) matrix} storing the sum of squares residual of each approximate minimizer (rows) at each iteration including the initial iterate (columns).
 \item initialX: \emph{a num_minimizersToFind by n matrix} which stores the set of initial iterates.
 \item runSetting: a list containing all the input variables to Cluster_Gauss_Newton_method (i.e., nonlinearFunction, targetVector, initial_lowerRange, initial_upperRange ,algorithmParameter_initialLambda, algorithmParameter_gamma, num_minimizersToFind, num_iteration, saveLog, runName, textMemo).}
 }
@@ -98,7 +104,9 @@ CGNM iteratively estimates the minimizer of the nonlinear least squares problem 
 Full detail of the algorithm and comparison with conventional method is available in the following publication, also please cite this publication when this algorithm is used in your research: Aoki et al. (2020) <doi.org/10.1007/s11081-020-09571-2>. Cluster Gauss–Newton method. Optimization and Engineering, 1-31.  As illustrated in this paper, CGNM is faster and more robust compared to repeatedly applying the conventional optimization/nonlinear least squares algorithm from various initial estimates. In addition, CGNM can realize this speed assuming the nonlinear function to be a black-box function (e.g. does not use things like adjoint equation of a system of ODE as the function does not have to be based on a system of ODEs.).
 }
 \examples{
-##lip-flop kinetics (an example known to have two distinct solutions)
+## Example 1 (start here): flip-flop kinetics defined as a plain R function
+## (an example known to have two distinct solutions). This is the minimal,
+## recommended pattern for calling Cluster_Gauss_Newton_method().
 
 model_analytic_function=function(x){
 
@@ -126,6 +134,10 @@ saveLog = FALSE)
 
 acceptedApproximateMinimizers(CGNM_result)
 
+## Example 2 (optional, advanced): the same flip-flop kinetics model defined
+## as an ODE system via the RxODE package, to illustrate fitting simulator-
+## based models. Requires the RxODE package (not a dependency of CGNM), so
+## this example is not run automatically.
 \dontrun{
 library(RxODE)
 

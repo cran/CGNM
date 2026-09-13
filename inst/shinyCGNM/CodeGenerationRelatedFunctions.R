@@ -100,6 +100,8 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
 
   unique_IDs = sort(unique(c(ll$ObservedData_dat$ID, ll$Dose_dat$ID)))
 
+  unique_3_IDs=unique(substr(unique_IDs,1,3))
+
   UseIndVar = FALSE
   IndividualParameter_text = ""
   if (!is.null(ll$parameterInfo_dat$VaryByID)) {
@@ -118,8 +120,12 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
       MO_value_vec = subset(ll$parameterInfo_dat, VaryByID == 0)$MO_value
 
 
-      temp_paraInfo = subset(ll$parameterInfo_dat, VaryByID != 0)
+      temp_paraInfo = subset(ll$parameterInfo_dat, VaryByID != 0&VaryByID != 3)
       indParameterNames = temp_paraInfo$ParameterName
+
+
+      temp_paraInfo_3 = subset(ll$parameterInfo_dat, VaryByID == 3)
+      indParameterNames_3 = temp_paraInfo_3$ParameterName
 
 
       Parameter_text = paste(paste0(
@@ -133,34 +139,69 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
       collapse = "\n")
 
       indParaNames = c()
-      for (i in seq(1, dim(temp_paraInfo)[1])) {
-        indParaNames = c(indParaNames,
-                         paste0(temp_paraInfo$ParameterName[i], "_ID", unique_IDs))
-        ParameterName_vec = c(
-          ParameterName_vec,
-          paste0(temp_paraInfo$ParameterName[i], "_ID", unique_IDs)
-        )
-        Initial_upper_range_vec = c(
-          Initial_upper_range_vec,
-          rep(
-            temp_paraInfo$Initial_upper_range[i],
-            length(unique_IDs)
+
+      if(dim(temp_paraInfo)[1]>0){
+        for (i in seq(1, dim(temp_paraInfo)[1])) {
+          indParaNames = c(indParaNames,
+                           paste0(temp_paraInfo$ParameterName[i], "_ID", unique_IDs))
+          ParameterName_vec = c(
+            ParameterName_vec,
+            paste0(temp_paraInfo$ParameterName[i], "_ID", unique_IDs)
           )
-        )
-        Initial_lower_range_vec = c(
-          Initial_lower_range_vec,
-          rep(
-            temp_paraInfo$Initial_lower_range[i],
-            length(unique_IDs)
+          Initial_upper_range_vec = c(
+            Initial_upper_range_vec,
+            rep(
+              temp_paraInfo$Initial_upper_range[i],
+              length(unique_IDs)
+            )
           )
-        )
-        Upper_bound_vec = c(Upper_bound_vec,
-                            rep(temp_paraInfo$Upper_bound[i], length(unique_IDs)))
-        Lower_bound_vec = c(Lower_bound_vec,
-                            rep(temp_paraInfo$Lower_bound[i], length(unique_IDs)))
-        MO_weight_vec = c(MO_weight_vec,
-                          rep(temp_paraInfo$MO_weight[i], length(unique_IDs)))
-        MO_value_vec = c(MO_value_vec, rep(temp_paraInfo$MO_value[i], length(unique_IDs)))
+          Initial_lower_range_vec = c(
+            Initial_lower_range_vec,
+            rep(
+              temp_paraInfo$Initial_lower_range[i],
+              length(unique_IDs)
+            )
+          )
+          Upper_bound_vec = c(Upper_bound_vec,
+                              rep(temp_paraInfo$Upper_bound[i], length(unique_IDs)))
+          Lower_bound_vec = c(Lower_bound_vec,
+                              rep(temp_paraInfo$Lower_bound[i], length(unique_IDs)))
+          MO_weight_vec = c(MO_weight_vec,
+                            rep(temp_paraInfo$MO_weight[i], length(unique_IDs)))
+          MO_value_vec = c(MO_value_vec, rep(temp_paraInfo$MO_value[i], length(unique_IDs)))
+        }
+      }
+
+      if(dim(temp_paraInfo_3)[1]>0){
+        for (i in seq(1, dim(temp_paraInfo_3)[1])) {
+          indParaNames = c(indParaNames,
+                           paste0(temp_paraInfo_3$ParameterName[i], "_ID", unique_3_IDs))
+          ParameterName_vec = c(
+            ParameterName_vec,
+            paste0(temp_paraInfo_3$ParameterName[i], "_ID", unique_3_IDs)
+          )
+          Initial_upper_range_vec = c(
+            Initial_upper_range_vec,
+            rep(
+              temp_paraInfo_3$Initial_upper_range[i],
+              length(unique_3_IDs)
+            )
+          )
+          Initial_lower_range_vec = c(
+            Initial_lower_range_vec,
+            rep(
+              temp_paraInfo_3$Initial_lower_range[i],
+              length(unique_3_IDs)
+            )
+          )
+          Upper_bound_vec = c(Upper_bound_vec,
+                              rep(temp_paraInfo_3$Upper_bound[i], length(unique_3_IDs)))
+          Lower_bound_vec = c(Lower_bound_vec,
+                              rep(temp_paraInfo_3$Lower_bound[i], length(unique_3_IDs)))
+          MO_weight_vec = c(MO_weight_vec,
+                            rep(temp_paraInfo_3$MO_weight[i], length(unique_3_IDs)))
+          MO_value_vec = c(MO_value_vec, rep(temp_paraInfo_3$MO_value[i], length(unique_3_IDs)))
+        }
       }
 
 
@@ -169,8 +210,7 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
         "=x[",
         seq(
           dim(subset(ll$parameterInfo_dat, VaryByID == 0))[1] + 1,
-          dim(subset(ll$parameterInfo_dat, VaryByID == 0))[1] + length(unique_IDs) *
-            dim(temp_paraInfo)[1]
+          dim(subset(ll$parameterInfo_dat, VaryByID == 0))[1] + length(indParaNames)#length(unique_IDs) * dim(temp_paraInfo)[1]
         ),
         "]"
       ),
@@ -200,7 +240,7 @@ puttogether_model_code = function(input, ll, rv, for_simulation=FALSE) {
                        "\"\n compiledModel=RxODE(ODE_text)")
 
 
-  parameterText = paste0(ifelse(for_simulation,paste0("\nsimulation_function_",runName,"=function(x){\n"),paste0("\nmodel_function_",runName,"=function(x){\n")), Parameter_text)
+  parameterText = paste0(ifelse(for_simulation,paste0("\nsimulation_function_",runName,"=function(x){\n"),paste0("\n\n\nmodel_function_",runName,"=function(x){\n")), Parameter_text)
 
   if (!UseIndVar) {
     parameterText = paste0(
@@ -248,13 +288,17 @@ uniqueTime=unique(simulationDataSkelton$time)\n"
                              "\n\n")
 
 
-
       dose_obs_Text = paste0(
         dose_obs_Text,
+        ifelse(length(indParameterNames)>0,
         paste(
           paste0(indParameterNames, "=", indParameterNames, "_ID", ID_nu),
           collapse = "\n"
-        ),
+        ), ""),"\n",
+        ifelse(length(indParameterNames_3)>0, paste(
+          paste0(indParameterNames_3, "=", indParameterNames_3, "_ID", substr(ID_nu,1,3)),
+          collapse = "\n"
+        ),""),
         "\n\nmodelingParameter=c(",
         pasteWithCollapse_WithApprox80charLimits(
           paste0(rv$ODEparameter, "=", rv$ODEparameter),
@@ -327,17 +371,19 @@ uniqueTime=unique(simulationDataSkelton$time)\n"
 
       uniqueObsVariables = unique(obs_df$Observation_expression)
 
-      for (obsVariable_nu in uniqueObsVariables) {
-        dose_obs_Text = paste0(
-          dose_obs_Text,
-          "\n      simResult_df=rbind(simResult_df,data.frame(value=with(data.frame(odeSol), ",
-          obsVariable_nu ,
-          "), Observation_expression=\"",
-          obsVariable_nu,
-          "\", time=odeSol[,\"time\"], ID=\"",
-          ID_nu,
-          "\"))"
-        )
+      if(!for_simulation){
+        for (obsVariable_nu in uniqueObsVariables) {
+          dose_obs_Text = paste0(
+            dose_obs_Text,
+            "\n      simResult_df=rbind(simResult_df,data.frame(value=with(data.frame(odeSol), ",
+            obsVariable_nu ,
+            "), Observation_expression=\"",
+            obsVariable_nu,
+            "\", time=odeSol[,\"time\"], ID=\"",
+            ID_nu,
+            "\"))"
+          )
+        }
       }
 
       if(for_simulation){
@@ -357,6 +403,14 @@ uniqueTime=unique(simulationDataSkelton$time)\n"
       return(mergedData$value)
 }"
   )
+
+  if(for_simulation){
+    dose_obs_Text = paste0(
+      dose_obs_Text,
+      "\n\n
+      simulationModel=simulation_function_",runName
+    )
+  }
 
 
   CGNM_run_text = paste0(

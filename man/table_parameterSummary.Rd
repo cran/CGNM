@@ -8,7 +8,8 @@ table_parameterSummary(
   CGNM_result,
   indicesToInclude = NA,
   ParameterNames = NA,
-  ReparameterizationDef = NA
+  ReparameterizationDef = NA,
+  pretty = FALSE
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ table_parameterSummary(
 \item{ParameterNames}{(default: NA) \emph{A vector of strings} the user can supply so that these names are used when making the plot. (Note if it set as NA or vector of incorrect length then the parameters are named as theta1, theta2, ... or as in ReparameterizationDef)}
 
 \item{ReparameterizationDef}{(default: NA) \emph{A vector of strings} the user can supply definition of reparameterization where each string follows R syntax.}
+
+\item{pretty}{(default: FALSE) \emph{TRUE or FALSE} if TRUE, instead of the full quantile table, return a one-column publication-ready table with the best fit parameter value (from \code{\link{bestApproximateMinimizers}}) and, when a bootstrap analysis result is available, its RSE (\%) in parentheses, e.g. \code{"12.3 (5.2\%)"}. If no bootstrap result is available RSE cannot be computed, so only the best fit value is shown.}
 }
 \value{
 \emph{A ggplot object} including the violin plot, interquartile range and median, minimum and maximum.
@@ -58,5 +61,6 @@ num_iter = 10, num_minimizersToFind = 100, saveLog = FALSE)
 table_parameterSummary(CGNM_result)
 table_parameterSummary(CGNM_result,
      ReparameterizationDef=c("log10(Ka)","log10(V1)","log10(CL)"))
+table_parameterSummary(CGNM_result, pretty=TRUE)
 
 }
